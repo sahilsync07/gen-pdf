@@ -17,7 +17,7 @@
 
     <!-- Main Content -->
     <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">
-      PDF Generator
+      Sri Brundabana Enterprises - PDF Generator
     </h1>
 
     <div class="bg-white p-6 rounded-xl shadow-md mb-6">
