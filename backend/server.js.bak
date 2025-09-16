@@ -1,0 +1,87 @@
+const express = require("express");
+const PDFDocument = require("pdfkit");
+const axios = require("axios");
+const cors = require("cors");
+const app = express();
+const port = 3000;
+
+app.use(cors());
+app.use(express.json());
+
+app.post("/generate-pdf", async (req, res) => {
+  const { brands, onlyWithPhotos, minQty } = req.body;
+  try {
+    const jsonUrl =
+      "https://raw.githubusercontent.com/sahilsync07/sbe/main/frontend/public/assets/stock-data.json";
+    const response = await axios.get(jsonUrl);
+    const data = response.data;
+
+    const filteredGroups = data.filter((group) =>
+      brands.includes(group.groupName)
+    );
+    const doc = new PDFDocument({ autoFirstPage: false, margin: 0 });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=products.pdf");
+    doc.pipe(res);
+
+    let yOffset = 0;
+    const stripHeight = 50;
+    const maxWidth = 500;
+
+    for (const group of filteredGroups) {
+      for (const product of group.products) {
+        if ((onlyWithPhotos && !product.imageUrl) || product.quantity <= minQty)
+          continue;
+        if (product.imageUrl) {
+          try {
+            const imgResponse = await axios.get(product.imageUrl, {
+              responseType: "arraybuffer",
+            });
+            const imgBuffer = Buffer.from(imgResponse.data, "binary");
+            const img = doc.openImage(imgBuffer);
+            const imgWidth = Math.min(img.width, maxWidth);
+            const imgHeight = (img.height / img.width) * imgWidth;
+
+            doc.addPage({ size: [imgWidth, imgHeight + stripHeight] });
+            doc.image(imgBuffer, 0, 0, { width: imgWidth, height: imgHeight });
+
+            // White strip with modern design
+            doc
+              .rect(0, imgHeight, imgWidth, stripHeight)
+              .fill("#ffffff")
+              .stroke("#e5e7eb");
+            doc
+              .font(
+                "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.woff2"
+              )
+              .fontSize(12)
+              .fillColor("#1f2937");
+            doc.text(product.productName, 10, imgHeight + 15, {
+              width: imgWidth - 100,
+              align: "left",
+            });
+            doc.text(
+              `Qty: ${product.quantity}`,
+              imgWidth - 90,
+              imgHeight + 15,
+              { width: 80, align: "right" }
+            );
+            yOffset = 0; // Reset for new page
+          } catch (imgErr) {
+            console.error(
+              `Error fetching image for ${product.productName}: ${imgErr}`
+            );
+          }
+        }
+      }
+    }
+    doc.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error generating PDF");
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
