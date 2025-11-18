@@ -1,79 +1,75 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-    <!-- Smart Wake-Up Screen -->
-    <div v-if="serverStatus !== 'ready'" class="fixed inset-0 bg-gradient-to-br from-indigo-900 to-purple-900 flex items-center justify-center z-50">
-      <div class="bg-white rounded-3xl shadow-2xl p-12 max-w-md text-center">
-        <div class="relative mx-auto w-28 h-28 mb-8">
-          <div class="absolute inset-0 rounded-full border-8 border-gray-200"></div>
-          <div class="absolute inset-0 rounded-full border-8 border-t-indigo-600 border-r-purple-600 animate-spin"></div>
-          <div class="absolute inset-0 flex items-center justify-center text-4xl font-bold text-indigo-600">
-            {{ countdown }}s
+  <div class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <!-- Smart Wake-Up Full Screen -->
+    <div v-if="serverStatus !== 'ready'" class="fixed inset-0 bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center z-50">
+      <div class="bg-white rounded-3xl shadow-2xl p-12 max-w-md w-full mx-6 text-center animate-pulse">
+        <div class="relative mx-auto w-32 h-32 mb-10">
+          <div class="absolute inset-0 rounded-full border-12 border-gray-200"></div>
+          <div class="absolute inset-0 rounded-full border-12 border-t-white border-r-transparent animate-spin"></div>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <span class="text-5xl font-black text-indigo-600">{{ countdown }}</span>
           </div>
         </div>
-        <h2 class="text-3xl font-bold text-gray-800 mb-4">{{ statusMessage.title }}</h2>
-        <p class="text-lg text-gray-600">Server is starting... your PDFs are coming soon!</p>
+        <h2 class="text-4xl font-bold text-gray-800 mb-4">Starting Server...</h2>
+        <p class="text-xl text-gray-600">Your catalog is being prepared • {{ countdown }} seconds</p>
       </div>
     </div>
 
-    <!-- Main App -->
-    <div v-if="serverStatus === 'ready'" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <!-- Main App – FULL RESPONSIVE GOD MODE -->
+    <div v-if="serverStatus === 'ready'" class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Header -->
-      <div class="text-center mb-10">
-        <h1 class="text-5xl sm:text-6xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-          Sri Brundabana Enterprises
+      <header class="text-center mb-12">
+        <h1 class="text-5xl sm:text-7xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight">
+          Sri Brundabana<br class="sm:hidden"> Enterprises
         </h1>
-        <p class="text-2xl text-gray-700 mt-3">PDF Catalog Generator</p>
-        <p class="text-green-600 font-bold mt-2">One PDF per brand • Instant Download</p>
-      </div>
+        <p class="text-2xl sm:text-3xl font-bold text-gray-700 mt-4">PDF Catalog Generator</p>
+        <p class="text-lg sm:text-xl text-green-600 font-bold mt-3">One PDF per brand • Instant Download</p>
+      </header>
 
-      <!-- Quick Select Buttons -->
-      <div class="bg-white rounded-3xl shadow-xl p-8 mb-8">
-        <h3 class="text-2xl font-bold text-gray-800 mb-6">Quick Select</h3>
-        <div class="flex flex-wrap gap-4 justify-center">
-          <button @click="selectAll" 
-                  class="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg">
+      <!-- Quick Action Buttons -->
+      <div class="bg-white/90 rounded-3xl shadow-2xl p-8 mb-10 backdrop-blur">
+        <h3 class="text-2xl sm:text-3xl font-bold text-center mb-8 text-gray-800">Quick Select</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          <button @click="selectAll" class="py-6 px-8 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all">
             Select All ({{ brands.length }})
           </button>
-          <button @click="selectTopBrands" :disabled="!hasTopBrands"
-                  class="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold hover:from-purple-700 hover:to-pink-700 transition shadow-lg disabled:opacity-50">
-            Top Brands ({{ topBrandsList.length }})
+          <button @click="selectTopBrands" :disabled="!hasTopBrands" class="py-6 px-8 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50">
+            Top Brands ({{ topBrandsList.filter(b=>brands.includes(b)).length }})
           </button>
-          <button @click="selectParagonBrands" :disabled="!hasParagonBrands"
-                  class="px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl font-bold hover:from-emerald-700 hover:to-teal-700 transition shadow-lg disabled:opacity-50">
-            Paragon Brands ({{ paragonBrandsList.length }})
+          <button @click="selectParagonBrands" :disabled="!hasParagonBrands" class="py-6 px-8 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50">
+            Paragon Brands ({{ paragonBrandsList.filter(b=>brands.includes(b)).length }})
           </button>
-          <button @click="selectedBrands = []" 
-                  class="px-8 py-4 bg-gray-600 text-white rounded-2xl font-bold hover:bg-gray-700 transition shadow-lg">
+          <button @click="selectedBrands = []" class="py-6 px-8 bg-gradient-to-r from-gray-600 to-gray-700 text-white text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all">
             Clear All
           </button>
         </div>
       </div>
 
-      <!-- Brand Grid -->
-      <div class="bg-white rounded-3xl shadow-2xl p-8">
-        <div class="flex items-center justify-between mb-8">
-          <h2 class="text-3xl font-bold text-gray-800">All Brands</h2>
-          <div class="text-xl font-semibold text-indigo-600">
-            {{ selectedBrands.length }} selected → {{ selectedBrands.length }} PDFs
+      <!-- Brand Grid – FULL WIDTH, MOBILE PERFECT -->
+      <div class="bg-white/90 rounded-3xl shadow-2xl p-8 backdrop-blur">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-10 gap-4">
+          <h2 class="text-3xl sm:text-4xl font-black text-gray-800">All Brands</h2>
+          <div class="text-2xl font-bold text-indigo-600">
+            {{ selectedBrands.length }} selected → {{ selectedBrands.length }} PDFs ready
           </div>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-5">
           <label v-for="brand in brands" :key="brand"
-                 class="group relative block p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                 class="group relative bg-white border-2 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-105"
                  :class="selectedBrands.includes(brand) 
-                   ? 'border-indigo-600 bg-indigo-50 shadow-lg' 
-                   : 'border-gray-300 bg-gray-50 hover:border-gray-400'">
+                   ? 'border-indigo-600 shadow-2xl ring-4 ring-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50' 
+                   : 'border-gray-300 shadow-lg hover:border-indigo-400'">
             
             <input type="checkbox" :value="brand" v-model="selectedBrands" class="sr-only" />
             
-            <div class="flex items-center justify-between">
-              <span class="text-lg font-medium text-gray-800 pr-2 leading-tight">
+            <div class="text-center">
+              <div class="text-lg sm:text-xl font-bold text-gray-800 leading-tight min-h-16 flex items-center justify-center px-2">
                 {{ brand }}
-              </span>
-              <div class="w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all"
+              </div>
+              <div class="mt-4 w-10 h-10 mx-auto rounded-full border-4 flex items-center justify-center transition-all"
                    :class="selectedBrands.includes(brand) ? 'bg-indigo-600 border-indigo-600' : 'border-gray-400 group-hover:border-indigo-500'">
-                <svg v-if="selectedBrands.includes(brand)" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="selectedBrands.includes(brand)" class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -83,38 +79,38 @@
       </div>
 
       <!-- Filters -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 my-10">
-        <div class="bg-white rounded-3xl shadow-xl p-8">
-          <label class="flex items-center space-x-5 text-xl cursor-pointer">
-            <input type="checkbox" v-model="onlyWithPhotos" class="w-7 h-7 text-indigo-600 rounded-lg" />
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 my-12">
+        <div class="bg-white/90 rounded-3xl shadow-2xl p-10 backdrop-blur">
+          <label class="flex items-center space-x-6 text-2xl font-semibold cursor-pointer">
+            <input type="checkbox" v-model="onlyWithPhotos" class="w-8 h-8 text-indigo-600 rounded-lg" />
             <span>Only products with photos</span>
           </label>
         </div>
-
-        <div class="bg-white rounded-3xl shadow-xl p-8">
-          <label class="flex items-center space-x-5 text-xl cursor-pointer mb-4">
-            <input type="checkbox" v-model="minQtyEnabled" class="w-7 h-7 text-indigo-600 rounded-lg" />
+        <div class="bg-white/90 rounded-3xl shadow-2xl p-10 backdrop-blur">
+          <label class="flex items-center space-x-6 text-2xl font-semibold cursor-pointer mb-6">
+            <input type="checkbox" v-model="minQtyEnabled" class="w-8 h-8 text-indigo-600 rounded-lg" />
             <span>Minimum quantity filter</span>
           </label>
-          <div class="flex items-center gap-4">
+          <div class="flex items-center gap-6">
             <input type="number" v-model.number="minQty" :disabled="!minQtyEnabled" min="0"
-                   class="w-32 px-5 py-4 text-xl border-2 rounded-xl disabled:bg-gray-100 focus:border-indigo-500" />
-            <span class="text-xl">or more</span>
+                   class="w-40 px-6 py-5 text-2xl font-bold border-2 rounded-2xl text-center disabled:bg-gray-100 focus:border-indigo-600" />
+            <span class="text-2xl font-semibold">or more</span>
           </div>
         </div>
       </div>
 
       <!-- Generate Button -->
-      <div class="text-center">
+      <div class="text-center mt-16">
         <button @click="generatePdf" :disabled="isGenerating || selectedBrands.length === 0"
-                class="inline-block px-16 py-8 text-3xl font-bold text-white rounded-3xl shadow-2xl transition-all duration-300
-                       disabled:opacity-60 disabled:cursor-not-allowed
-                       bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800">
+                class="px-20 py-10 text-3xl sm:text-5xl font-black text-white rounded-full shadow-2xl transition-all duration-500 transform hover:scale-110 disabled:opacity-60"
+                :class="isGenerating ? 'bg-gradient-to-r from-orange-600 to-red-600' : 'bg-gradient-to-r from-green-600 to-emerald-700'">
           <span v-if="!isGenerating">
-            Download {{ selectedBrands.length }} Separate PDFs Now
+            Download {{ selectedBrands.length }} PDFs Now
           </span>
-          <span v-else>
-            Generating • {{ currentBrand }} ({{ completedCount }}/{{ selectedBrands.length }})
+          <span v-else class="flex items-center gap-4">
+            <span>Generating</span>
+            <span class="animate-spin">Loading</span>
+            <span>{{ currentBrand }} ({{ completedCount }}/{{ selectedBrands.length }})</span>
           </span>
         </button>
       </div>
@@ -140,33 +136,14 @@ export default {
       completedCount: 0,
       pollInterval: null,
 
-      // Hardcoded brand lists
-      topBrandsList: [
-        "CUBIX",
-        "EEKEN",
-        "Florex (Swastik)",
-        "Max",
-        "RELIANCE FOOTWEAR",
-        "Solea & Meriva , Mascara",
-        "VERTEX, SLICKERS & FENDER"
-      ],
-      paragonBrandsList: [
-        "EEKEN",
-        "Max",
-        "Solea & Meriva , Mascara",
-        "VERTEX, SLICKERS & FENDER"
-      ],
+      topBrandsList: ["CUBIX","EEKEN","Florex (Swastik)","Max","RELIANCE FOOTWEAR","Solea & Meriva , Mascara","VERTEX, SLICKERS & FENDER"],
+      paragonBrandsList: ["EEKEN","Max","Solea & Meriva , Mascara","VERTEX, SLICKERS & FENDER"]
     };
   },
 
   computed: {
     hasTopBrands() { return this.topBrandsList.some(b => this.brands.includes(b)); },
     hasParagonBrands() { return this.paragonBrandsList.some(b => this.brands.includes(b)); },
-    statusMessage() {
-      if (this.serverStatus === "waking") return { title: "Starting server..." };
-      if (this.serverStatus === "checking") return { title: "Almost ready!" };
-      return { title: "Please wait..." };
-    },
   },
 
   async mounted() {
@@ -188,7 +165,6 @@ export default {
       this.serverStatus = "waking";
       this.startCountdown();
       axios.get("https://gen-pdf-0hb9.onrender.com/", { timeout: 5000 }).catch(() => {});
-
       const check = async () => {
         try {
           await axios.head("https://gen-pdf-0hb9.onrender.com/", { timeout: 10000 });
@@ -196,7 +172,6 @@ export default {
           clearInterval(this.pollInterval);
         } catch {
           if (this.countdown <= 0) this.serverStatus = "failed";
-          else this.serverStatus = "checking";
         }
       };
       check();
@@ -211,15 +186,11 @@ export default {
     },
 
     selectAll() { this.selectedBrands = [...this.brands]; },
-    selectTopBrands() { 
-      this.selectedBrands = [...new Set([...this.selectedBrands, ...this.topBrandsList.filter(b => this.brands.includes(b))])]; 
-    },
-    selectParagonBrands() { 
-      this.selectedBrands = [...new Set([...this.selectedBrands, ...this.paragonBrandsList.filter(b => this.brands.includes(b))])]; 
-    },
+    selectTopBrands() { this.selectedBrands = [...new Set([...this.selectedBrands, ...this.topBrandsList.filter(b => this.brands.includes(b))])]; },
+    selectParagonBrands() { this.selectedBrands = [...new Set([...this.selectedBrands, ...this.paragonBrandsList.filter(b => this.brands.includes(b))])]; },
 
     async generatePdf() {
-      if (this.selectedBrands.length === 0) return alert("Select at least one brand!");
+      if (!this.selectedBrands.length) return alert("Select brands first!");
 
       this.isGenerating = true;
       this.completedCount = 0;
@@ -240,14 +211,14 @@ export default {
         URL.revokeObjectURL(url);
 
         this.completedCount++;
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise(r => setTimeout(r, 700));
       });
 
       try {
         await Promise.all(promises);
-        alert(`All ${this.selectedBrands.length} PDFs downloaded successfully!`);
+        alert(`All ${this.selectedBrands.length} PDFs downloaded!`);
       } catch {
-        alert("Some failed. Try again in 30s.");
+        alert("Some failed. Try again.");
       } finally {
         this.isGenerating = false;
         this.currentBrand = "";
