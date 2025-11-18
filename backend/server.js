@@ -5,7 +5,17 @@ const cors = require("cors");
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "10mb" })); // in case payload grows
+app.use(express.json({ limit: "10mb" }));
+
+// Simple root route for health check
+app.get("/", (req, res) => {
+  res.json({ 
+    message: "Sri Brundabana Enterprises PDF Generator API", 
+    status: "Live & Ready", 
+    endpoint: "/generate-pdf (POST only)",
+    docs: "Use from your Vue app to generate product catalogs"
+  });
+});
 
 app.post("/generate-pdf", async (req, res) => {
   const { brands, onlyWithPhotos, minQty } = req.body;
@@ -24,8 +34,8 @@ app.post("/generate-pdf", async (req, res) => {
       brands.includes(group.groupName)
     );
 
-    // Generate safe & beautiful filename
-    const today = new Date().toISOString().split("T")[0]; // 2025-11-18
+    // Generate safe filename
+    const today = new Date().toISOString().split("T")[0];
     const safeBrands = brands
       .map((b) => b.toString().replace(/[\/\\?%*:|"<>]/g, "_"))
       .sort()
@@ -44,7 +54,6 @@ app.post("/generate-pdf", async (req, res) => {
 
     for (const group of filteredGroups) {
       for (const product of group.products) {
-        // Skip conditions
         if (onlyWithPhotos && !product.imageUrl) continue;
         if (product.quantity <= minQty) continue;
 
@@ -73,9 +82,7 @@ app.post("/generate-pdf", async (req, res) => {
             });
 
             // White bar with text
-            doc
-              .rect(20, 20 + finalHeight, maxWidth, 50)
-              .fill("white");
+            doc.rect(20, 20 + finalHeight, maxWidth, 50).fill("white");
             doc
               .fillColor("black")
               .fontSize(14)
@@ -90,11 +97,9 @@ app.post("/generate-pdf", async (req, res) => {
             imageAdded = true;
           } catch (imgErr) {
             console.error(`Image failed for ${product.productName}:`, imgErr.message);
-            // Continue to text-only fallback
           }
         }
 
-        // Fallback: text-only page if no image or image failed
         if (!imageAdded) {
           doc.addPage();
           doc
