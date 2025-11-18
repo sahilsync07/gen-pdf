@@ -67,46 +67,47 @@ app.post("/generate-pdf", async (req, res) => {
             });
             const imgBuffer = Buffer.from(imgResponse.data);
 
-            doc.addPage(); // One clean page per product
+            doc.addPage();
 
             const img = doc.openImage(imgBuffer);
-            const originalWidth = img.width;
-            const originalHeight = img.height;
+            const maxWidth = 570;
+            const scale = maxWidth / img.width;
+            let imgHeight = img.height * scale;
+            const maxPageHeight = doc.page.height - 100;  // Leave EXTRA space for taller text bar
 
-            // Max allowed width (same as before — works perfectly for 4:3)
-            const maxDisplayWidth = 540;
+            let finalHeight = Math.min(imgHeight, maxPageHeight);
 
-            // Calculate height using original ratio
-            let displayWidth = maxDisplayWidth;
-            let displayHeight = (originalHeight / originalWidth) * maxDisplayWidth;
-
-            // If image is too tall (more than ~A4 height), reduce width to make it shorter
-            if (displayHeight > 700) {
-              displayHeight = 700;
-              displayWidth = (originalWidth / originalHeight) * 700;
+            // For tall images: reduce width to avoid squeeze (keeps ratio perfect)
+            if (imgHeight > maxPageHeight * 0.8) {  // If image would be too tall
+              const reducedScale = (maxPageHeight * 0.8) / img.height;
+              finalHeight = maxPageHeight * 0.8;
+              const reducedWidth = img.width * reducedScale;
+              doc.image(imgBuffer, 20 + (maxWidth - reducedWidth) / 2, 20, {  // Center horizontally
+                width: reducedWidth,
+                height: finalHeight,
+              });
+            } else {
+              doc.image(imgBuffer, 20, 20, {
+                width: maxWidth,
+                height: finalHeight,
+              });
             }
 
-            // Place at top-left with safe margin — simple and reliable
-            doc.image(imgBuffer, 30, 50, {
-              width: displayWidth,
-              height: displayHeight,
-            });
-
-            // White text bar at bottom of image
-            const textY = 50 + displayHeight + 10;
-            doc.rect(20, textY - 5, 560, 50).fill("white");
+            // Taller white bar + split text (no overflow)
+            const textY = 20 + finalHeight + 10;
+            doc.rect(20, textY - 5, maxWidth, 80).fill("white");  // 80px tall bar
             doc
               .fillColor("black")
-              .fontSize(16)
+              .fontSize(12)  // Smaller font for long names
               .font("Helvetica-Bold")
-              .text(`${product.productName}`, 40, textY, { width: 520 })
+              .text(product.productName, 30, textY + 10, { width: maxWidth - 40, align: "left" })  // Name only, line 1
               .fontSize(14)
               .font("Helvetica")
-              .text(`Qty: ${product.quantity}`, 40, textY + 22);
+              .text(`Qty: ${product.quantity}`, 30, textY + 35, { width: maxWidth - 40, align: "left" });  // Qty on line 2
 
             imageAdded = true;
           } catch (imgErr) {
-            console.error(`Image failed: ${product.productName}`, imgErr.message);
+            console.error(`Image failed for ${product.productName}:`, imgErr.message);
           }
         }
 
