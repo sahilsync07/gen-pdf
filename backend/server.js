@@ -9,9 +9,8 @@ app.use(express.json({ limit: "10mb" }));
 
 app.get("/", (req, res) => {
   res.json({ 
-    message: "Sri Brundabana Enterprises PDF Generator API", 
-    status: "PERFECT & FINAL VERSION", 
-    tip: "Your catalogs now look like ₹50 lakh brand catalogs"
+    message: "Sri Brundabana Enterprises PDF Generator", 
+    status: "SEXIEST VERSION EVER 🚀", 
   });
 });
 
@@ -39,17 +38,49 @@ app.post("/generate-pdf", async (req, res) => {
     const doc = new PDFDocument({
       size: "A4",
       autoFirstPage: false,
-      margins: { top: 40, bottom: 40, left: 30, right: 30 }
+      margins: { top: 20, bottom: 20, left: 20, right: 20 }
     });
 
     doc.pipe(res);
 
     for (const group of filteredGroups) {
+      const brandName = group.groupName; // For header
+
       for (const product of group.products) {
         if (onlyWithPhotos && !product.imageUrl) continue;
         if (product.quantity <= minQty) continue;
 
         doc.addPage();
+
+        // === SEXY BACKGROUND - Light beige like Paragon ===
+        doc.rect(0, 0, doc.page.width, doc.page.height).fill("#faf8f6");
+
+        // === SUBTLE WAVE PATTERN (top & bottom like EEKEN) ===
+        doc
+          .moveTo(0, 0)
+          .lineTo(200, 80)
+          .quadraticCurveTo(300, 0, 600, 100)
+          .strokeColor("#e0e0e0")
+          .lineWidth(3)
+          .stroke();
+
+        doc
+          .moveTo(0, doc.page.height)
+          .lineTo(250, doc.page.height - 100)
+          .quadraticCurveTo(350, doc.page.height, 600, doc.page.height - 50)
+          .strokeColor("#e0e0e0")
+          .lineWidth(3)
+          .stroke();
+
+        // === BRAND NAME AT TOP (faint & elegant) ===
+        doc
+          .fontSize(50)
+          .fillColor("#dddddd")
+          .font("Helvetica-Bold")
+          .text(brandName, 0, 60, {
+            width: doc.page.width,
+            align: "center"
+          });
 
         if (product.imageUrl) {
           try {
@@ -57,60 +88,58 @@ app.post("/generate-pdf", async (req, res) => {
             const imgBuffer = Buffer.from(imgResponse.data);
             const img = doc.openImage(imgBuffer);
 
-            // Max available width & height (leaving space for text)
+            // MAXIMUM IMAGE SIZE (90% of page height)
             const maxWidth = doc.page.width - 80;
-            const maxHeight = doc.page.height - 200;
+            const maxHeight = doc.page.height - 180; // Room for text
 
-            // Calculate scale to fit while preserving aspect ratio
             const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
             const finalWidth = img.width * scale;
             const finalHeight = img.height * scale;
 
-            // Center the image perfectly
             const x = (doc.page.width - finalWidth) / 2;
-            const y = 60;
+            const y = 120; // Start lower to avoid wave overlap
 
             doc.image(imgBuffer, x, y, { width: finalWidth, height: finalHeight });
 
-            // Text area below image — perfectly centered
-            const textY = y + finalHeight + 20;
+            // Product name & Qty - BIG, BOLD, CENTERED
+            const textY = y + finalHeight + 30;
 
             doc
-              .fillColor("black")
+              .fillColor("#000000")
+              .fontSize(18)
               .font("Helvetica-Bold")
-              .fontSize(14)
-              .text(product.productName, 50, textY, {
-                width: doc.page.width - 100,
+              .text(product.productName, 0, textY, {
+                width: doc.page.width,
                 align: "center"
               });
 
             doc
-              .font("Helvetica")
-              .fontSize(16)
-              .text(`Qty: ${product.quantity}`, 50, textY + 35, {
-                width: doc.page.width - 100,
+              .fontSize(20)
+              .font("Helvetica-Bold")
+              .fillColor("#d40000") // Red like in catalogs
+              .text(`Qty: ${product.quantity}`, 0, textY + 40, {
+                width: doc.page.width,
                 align: "center"
               });
 
           } catch (imgErr) {
-            console.error(`Image failed: ${product.productName}`);
-            doc.fontSize(18).text("Image Not Available", { align: "center" });
+            doc.fontSize(20).text("Image Load Failed", { align: "center" });
           }
         } else {
-          doc.fontSize(24).text(product.productName, { align: "center", width: doc.page.width });
-          doc.fontSize(18).text(`Quantity: ${product.quantity}`, { align: "center", width: doc.page.width });
+          doc.fontSize(24).text(product.productName, { align: "center" });
+          doc.fontSize(20).text(`Qty: ${product.quantity}`, { align: "center" });
         }
       }
     }
 
     doc.end();
   } catch (err) {
-    console.error("PDF Error:", err);
-    if (!res.headersSent) res.status(500).send("Server busy – try again in 30s");
+    console.error("Error:", err);
+    if (!res.headersSent) res.status(500).send("Try again");
   }
 });
 
 const port = process.env.PORT || 3000;
 app.listen(port, "0.0.0.0", () => {
-  console.log(`SBE PDF Generator running on port ${port} — FINAL PERFECT VERSION`);
+  console.log(`SBE Sexy PDF Generator live on port ${port}`);
 });
