@@ -10,7 +10,7 @@ app.use(express.json({ limit: "10mb" }));
 app.get("/", (req, res) => {
   res.json({ 
     message: "Sri Brundabana Enterprises PDF Generator", 
-    status: "SEXIEST VERSION EVER 🚀", 
+    status: "FINAL SEXY VERSION - NO EXTRA PAGES EVER AGAIN 🚀", 
   });
 });
 
@@ -44,7 +44,7 @@ app.post("/generate-pdf", async (req, res) => {
     doc.pipe(res);
 
     for (const group of filteredGroups) {
-      const brandName = group.groupName; // For header
+      let isFirstProductInBrand = true; // <--- THIS FIX: Brand name only on first page
 
       for (const product of group.products) {
         if (onlyWithPhotos && !product.imageUrl) continue;
@@ -52,10 +52,10 @@ app.post("/generate-pdf", async (req, res) => {
 
         doc.addPage();
 
-        // === SEXY BACKGROUND - Light beige like Paragon ===
+        // Sexy beige background
         doc.rect(0, 0, doc.page.width, doc.page.height).fill("#faf8f6");
 
-        // === SUBTLE WAVE PATTERN (top & bottom like EEKEN) ===
+        // Subtle waves (kept - they look premium)
         doc
           .moveTo(0, 0)
           .lineTo(200, 80)
@@ -72,15 +72,20 @@ app.post("/generate-pdf", async (req, res) => {
           .lineWidth(3)
           .stroke();
 
-        // === BRAND NAME AT TOP (faint & elegant) ===
-        doc
-          .fontSize(50)
-          .fillColor("#dddddd")
-          .font("Helvetica-Bold")
-          .text(brandName, 0, 60, {
-            width: doc.page.width,
-            align: "center"
-          });
+        // Brand name only on FIRST product page of the brand - faint watermark
+        if (isFirstProductInBrand) {
+          doc
+            .fillOpacity(0.15)
+            .fontSize(42)
+            .font("Helvetica-Bold")
+            .fillColor("#000000")
+            .text(group.groupName, 0, 40, {
+              width: doc.page.width,
+              align: "center"
+            });
+          doc.fillOpacity(1.0);
+          isFirstProductInBrand = false;
+        }
 
         if (product.imageUrl) {
           try {
@@ -88,25 +93,24 @@ app.post("/generate-pdf", async (req, res) => {
             const imgBuffer = Buffer.from(imgResponse.data);
             const img = doc.openImage(imgBuffer);
 
-            // MAXIMUM IMAGE SIZE (90% of page height)
             const maxWidth = doc.page.width - 80;
-            const maxHeight = doc.page.height - 180; // Room for text
+            const maxHeight = doc.page.height - 180; // Even more space for text
 
             const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
             const finalWidth = img.width * scale;
             const finalHeight = img.height * scale;
 
             const x = (doc.page.width - finalWidth) / 2;
-            const y = 120; // Start lower to avoid wave overlap
+            const y = 90; // Lower to avoid any overlap with brand name
 
             doc.image(imgBuffer, x, y, { width: finalWidth, height: finalHeight });
 
-            // Product name & Qty - BIG, BOLD, CENTERED
             const textY = y + finalHeight + 30;
 
+            // BIG, BOLD, CENTERED TEXT
             doc
               .fillColor("#000000")
-              .fontSize(18)
+              .fontSize(20)
               .font("Helvetica-Bold")
               .text(product.productName, 0, textY, {
                 width: doc.page.width,
@@ -114,15 +118,16 @@ app.post("/generate-pdf", async (req, res) => {
               });
 
             doc
-              .fontSize(20)
+              .fontSize(22)
               .font("Helvetica-Bold")
-              .fillColor("#d40000") // Red like in catalogs
-              .text(`Qty: ${product.quantity}`, 0, textY + 40, {
+              .fillColor("#d40000")
+              .text(`Qty: ${product.quantity}`, 0, textY + 45, {
                 width: doc.page.width,
                 align: "center"
               });
 
           } catch (imgErr) {
+            console.error(`Image failed: ${product.productName}`);
             doc.fontSize(20).text("Image Load Failed", { align: "center" });
           }
         } else {
