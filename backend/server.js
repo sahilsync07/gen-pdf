@@ -73,37 +73,36 @@ app.post("/generate-pdf", async (req, res) => {
             const maxWidth = 570;
             const scale = maxWidth / img.width;
             let imgHeight = img.height * scale;
-            const maxPageHeight = doc.page.height - 100;  // Leave EXTRA space for taller text bar
+            const maxPageHeight = doc.page.height - 150;  // More space for taller text bar
 
+            // For tall images: reduce width to avoid squeeze (keeps ratio perfect) - ratio-based
             let finalHeight = Math.min(imgHeight, maxPageHeight);
+            let displayWidth = maxWidth;
+            let xPos = 20;
 
-            // For tall images: reduce width to avoid squeeze (keeps ratio perfect)
-            if (imgHeight > maxPageHeight * 0.8) {  // If image would be too tall
-              const reducedScale = (maxPageHeight * 0.8) / img.height;
-              finalHeight = maxPageHeight * 0.8;
-              const reducedWidth = img.width * reducedScale;
-              doc.image(imgBuffer, 20 + (maxWidth - reducedWidth) / 2, 20, {  // Center horizontally
-                width: reducedWidth,
-                height: finalHeight,
-              });
-            } else {
-              doc.image(imgBuffer, 20, 20, {
-                width: maxWidth,
-                height: finalHeight,
-              });
+            if (img.height / img.width > 1.2 || imgHeight > maxPageHeight * 0.7) {  // Tall ratio or too tall
+              const reducedScale = (maxPageHeight * 0.7) / img.height;
+              finalHeight = maxPageHeight * 0.7;
+              displayWidth = img.width * reducedScale;
+              xPos = 20 + (maxWidth - displayWidth) / 2;  // Center horizontally
             }
 
-            // Taller white bar + split text (no overflow)
+            doc.image(imgBuffer, xPos, 20, {
+              width: displayWidth,
+              height: finalHeight,
+            });
+
+            // Taller white bar + split text (no overflow) - CENTER ALIGNED
             const textY = 20 + finalHeight + 10;
-            doc.rect(20, textY - 5, maxWidth, 80).fill("white");  // 80px tall bar
+            doc.rect(20, textY - 5, maxWidth, 120).fill("white");  // 120px tall bar for safety
             doc
               .fillColor("black")
-              .fontSize(12)  // Smaller font for long names
+              .fontSize(11)  // Even smaller font for very long names
               .font("Helvetica-Bold")
-              .text(product.productName, 30, textY + 10, { width: maxWidth - 40, align: "left" })  // Name only, line 1
+              .text(product.productName, 30, textY + 10, { width: maxWidth - 40, align: "center" })  // Name centered, line 1
               .fontSize(14)
               .font("Helvetica")
-              .text(`Qty: ${product.quantity}`, 30, textY + 35, { width: maxWidth - 40, align: "left" });  // Qty on line 2
+              .text(`Qty: ${product.quantity}`, 30, textY + 50, { width: maxWidth - 40, align: "center" });  // Qty centered, line 2 (more space)
 
             imageAdded = true;
           } catch (imgErr) {
@@ -116,10 +115,10 @@ app.post("/generate-pdf", async (req, res) => {
           doc
             .fontSize(24)
             .fillColor("black")
-            .text(`${product.productName}`, 50, 100);
+            .text(`${product.productName}`, (doc.page.width / 2), 100, { align: "center" });
           doc
             .fontSize(18)
-            .text(`Quantity: ${product.quantity}`, 50, 150);
+            .text(`Quantity: ${product.quantity}`, (doc.page.width / 2), 150, { align: "center" });
         }
       }
     }
