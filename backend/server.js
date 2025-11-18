@@ -67,36 +67,46 @@ app.post("/generate-pdf", async (req, res) => {
             });
             const imgBuffer = Buffer.from(imgResponse.data);
 
-            doc.addPage();
+            doc.addPage(); // One clean page per product
+
             const img = doc.openImage(imgBuffer);
-            const maxWidth = 570;
-            const scale = maxWidth / img.width;
-            const imgHeight = img.height * scale;
-            const maxPageHeight = doc.page.height - 80;
+            const originalWidth = img.width;
+            const originalHeight = img.height;
 
-            const finalHeight = Math.min(imgHeight, maxPageHeight);
+            // Max allowed width (same as before — works perfectly for 4:3)
+            const maxDisplayWidth = 540;
 
-            doc.image(imgBuffer, 20, 20, {
-              width: maxWidth,
-              height: finalHeight,
+            // Calculate height using original ratio
+            let displayWidth = maxDisplayWidth;
+            let displayHeight = (originalHeight / originalWidth) * maxDisplayWidth;
+
+            // If image is too tall (more than ~A4 height), reduce width to make it shorter
+            if (displayHeight > 700) {
+              displayHeight = 700;
+              displayWidth = (originalWidth / originalHeight) * 700;
+            }
+
+            // Place at top-left with safe margin — simple and reliable
+            doc.image(imgBuffer, 30, 50, {
+              width: displayWidth,
+              height: displayHeight,
             });
 
-            // White bar with text
-            doc.rect(20, 20 + finalHeight, maxWidth, 50).fill("white");
+            // White text bar at bottom of image
+            const textY = 50 + displayHeight + 10;
+            doc.rect(20, textY - 5, 560, 50).fill("white");
             doc
               .fillColor("black")
-              .fontSize(14)
+              .fontSize(16)
               .font("Helvetica-Bold")
-              .text(
-                `${product.productName} - Qty: ${product.quantity}`,
-                30,
-                30 + finalHeight,
-                { width: maxWidth - 20, align: "left" }
-              );
+              .text(`${product.productName}`, 40, textY, { width: 520 })
+              .fontSize(14)
+              .font("Helvetica")
+              .text(`Qty: ${product.quantity}`, 40, textY + 22);
 
             imageAdded = true;
           } catch (imgErr) {
-            console.error(`Image failed for ${product.productName}:`, imgErr.message);
+            console.error(`Image failed: ${product.productName}`, imgErr.message);
           }
         }
 
