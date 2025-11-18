@@ -1,104 +1,123 @@
 <template>
-  <div class="container mx-auto p-6 max-w-5xl min-h-screen">
-    <!-- Smart Wake-Up Overlay -->
-    <div v-if="serverStatus !== 'ready'" class="fixed inset-0 bg-gradient-to-br from-purple-900 to-indigo-900 bg-opacity-95 flex items-center justify-center z-50 backdrop-blur-lg">
-      <div class="bg-white rounded-3xl shadow-2xl p-10 max-w-md text-center">
-        <div class="relative mx-auto w-24 h-24 mb-8">
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <!-- Smart Wake-Up Screen -->
+    <div v-if="serverStatus !== 'ready'" class="fixed inset-0 bg-gradient-to-br from-indigo-900 to-purple-900 flex items-center justify-center z-50">
+      <div class="bg-white rounded-3xl shadow-2xl p-12 max-w-md text-center">
+        <div class="relative mx-auto w-28 h-28 mb-8">
           <div class="absolute inset-0 rounded-full border-8 border-gray-200"></div>
           <div class="absolute inset-0 rounded-full border-8 border-t-indigo-600 border-r-purple-600 animate-spin"></div>
-          <div class="absolute inset-0 flex items-center justify-center">
-            <span class="text-3xl font-bold text-indigo-600">{{ countdown }}s</span>
+          <div class="absolute inset-0 flex items-center justify-center text-4xl font-bold text-indigo-600">
+            {{ countdown }}s
           </div>
         </div>
         <h2 class="text-3xl font-bold text-gray-800 mb-4">{{ statusMessage.title }}</h2>
-        <p class="text-lg text-gray-600 leading-relaxed mb-6">{{ statusMessage.subtitle }}</p>
-        <div class="text-sm text-gray-500">Free hosting wakes up slowly — but we’re handling it!</div>
+        <p class="text-lg text-gray-600">Server is starting... your PDFs are coming soon!</p>
       </div>
     </div>
 
     <!-- Main App -->
-    <div v-if="serverStatus === 'ready'" class="space-y-10">
-      <div class="text-center">
-        <h1 class="text-5xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+    <div v-if="serverStatus === 'ready'" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      <!-- Header -->
+      <div class="text-center mb-10">
+        <h1 class="text-5xl sm:text-6xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
           Sri Brundabana Enterprises
         </h1>
-        <p class="text-2xl text-gray-600 mt-2">PDF Catalog Generator</p>
-        <p class="text-lg text-green-600 font-semibold mt-4">One PDF per brand • No merging</p>
+        <p class="text-2xl text-gray-700 mt-3">PDF Catalog Generator</p>
+        <p class="text-green-600 font-bold mt-2">One PDF per brand • Instant Download</p>
       </div>
 
-      <!-- Brand Checkboxes Grid -->
-      <div class="bg-white rounded-3xl shadow-2xl p-10">
-        <div class="flex items-center justify-between mb-8">
-          <h2 class="text-2xl font-bold text-gray-800">Select Brands</h2>
-          <div class="text-lg text-gray-600">
-            <span class="font-bold text-indigo-600">{{ selectedBrands.length }}</span> selected → 
-            <span class="font-bold text-green-600">{{ selectedBrands.length }}</span> PDFs will download
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-          <label v-for="brand in brands" :key="brand"
-            class="relative flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-lg"
-            :class="selectedBrands.includes(brand) 
-              ? 'border-indigo-600 bg-indigo-50 shadow-md' 
-              : 'border-gray-300 bg-gray-50'">
-            <input type="checkbox" :value="brand" v-model="selectedBrands" class="absolute opacity-0" />
-            <div class="flex items-center w-full">
-              <div class="w-8 h-8 rounded-lg border-2 flex items-center justify-center mr-4"
-                   :class="selectedBrands.includes(brand) ? 'border-indigo-600 bg-indigo-600' : 'border-gray-400'">
-                <svg v-if="selectedBrands.includes(brand)" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span class="text-lg font-medium text-gray-800">{{ brand }}</span>
-            </div>
-          </label>
-        </div>
-
-        <div class="mt-10 flex justify-center gap-6">
-          <button @click="selectedBrands = brands.slice()" 
-                  class="px-8 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition">
-            Select All
+      <!-- Quick Select Buttons -->
+      <div class="bg-white rounded-3xl shadow-xl p-8 mb-8">
+        <h3 class="text-2xl font-bold text-gray-800 mb-6">Quick Select</h3>
+        <div class="flex flex-wrap gap-4 justify-center">
+          <button @click="selectAll" 
+                  class="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg">
+            Select All ({{ brands.length }})
+          </button>
+          <button @click="selectTopBrands" :disabled="!hasTopBrands"
+                  class="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold hover:from-purple-700 hover:to-pink-700 transition shadow-lg disabled:opacity-50">
+            Top Brands ({{ topBrandsList.length }})
+          </button>
+          <button @click="selectParagonBrands" :disabled="!hasParagonBrands"
+                  class="px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl font-bold hover:from-emerald-700 hover:to-teal-700 transition shadow-lg disabled:opacity-50">
+            Paragon Brands ({{ paragonBrandsList.length }})
           </button>
           <button @click="selectedBrands = []" 
-                  class="px-8 py-3 bg-gray-600 text-white rounded-xl font-semibold hover:bg-gray-700 transition">
+                  class="px-8 py-4 bg-gray-600 text-white rounded-2xl font-bold hover:bg-gray-700 transition shadow-lg">
             Clear All
           </button>
         </div>
       </div>
 
-      <!-- Filters -->
-      <div class="bg-white rounded-3xl shadow-2xl p-10 grid grid-cols-1 md:grid-cols-2 gap-10">
-        <label class="flex items-center space-x-5 text-xl cursor-pointer">
-          <input type="checkbox" v-model="onlyWithPhotos" class="w-7 h-7 text-indigo-600 rounded-lg" />
-          <span>Only products with photos</span>
-        </label>
+      <!-- Brand Grid -->
+      <div class="bg-white rounded-3xl shadow-2xl p-8">
+        <div class="flex items-center justify-between mb-8">
+          <h2 class="text-3xl font-bold text-gray-800">All Brands</h2>
+          <div class="text-xl font-semibold text-indigo-600">
+            {{ selectedBrands.length }} selected → {{ selectedBrands.length }} PDFs
+          </div>
+        </div>
 
-        <div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+          <label v-for="brand in brands" :key="brand"
+                 class="group relative block p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                 :class="selectedBrands.includes(brand) 
+                   ? 'border-indigo-600 bg-indigo-50 shadow-lg' 
+                   : 'border-gray-300 bg-gray-50 hover:border-gray-400'">
+            
+            <input type="checkbox" :value="brand" v-model="selectedBrands" class="sr-only" />
+            
+            <div class="flex items-center justify-between">
+              <span class="text-lg font-medium text-gray-800 pr-2 leading-tight">
+                {{ brand }}
+              </span>
+              <div class="w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all"
+                   :class="selectedBrands.includes(brand) ? 'bg-indigo-600 border-indigo-600' : 'border-gray-400 group-hover:border-indigo-500'">
+                <svg v-if="selectedBrands.includes(brand)" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 my-10">
+        <div class="bg-white rounded-3xl shadow-xl p-8">
           <label class="flex items-center space-x-5 text-xl cursor-pointer">
+            <input type="checkbox" v-model="onlyWithPhotos" class="w-7 h-7 text-indigo-600 rounded-lg" />
+            <span>Only products with photos</span>
+          </label>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-xl p-8">
+          <label class="flex items-center space-x-5 text-xl cursor-pointer mb-4">
             <input type="checkbox" v-model="minQtyEnabled" class="w-7 h-7 text-indigo-600 rounded-lg" />
             <span>Minimum quantity filter</span>
           </label>
-          <div class="flex items-center gap-4 mt-5">
+          <div class="flex items-center gap-4">
             <input type="number" v-model.number="minQty" :disabled="!minQtyEnabled" min="0"
-              class="w-32 px-5 py-4 text-xl border-2 rounded-xl disabled:bg-gray-100" />
+                   class="w-32 px-5 py-4 text-xl border-2 rounded-xl disabled:bg-gray-100 focus:border-indigo-500" />
             <span class="text-xl">or more</span>
           </div>
         </div>
       </div>
 
       <!-- Generate Button -->
-      <button @click="generatePdf" :disabled="isGenerating || selectedBrands.length === 0"
-        class="w-full max-w-2xl mx-auto block py-7 text-3xl font-bold text-white rounded-3xl shadow-2xl transition-all
-               disabled:opacity-60 disabled:cursor-not-allowed
-               bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800">
-        <span v-if="!isGenerating">
-          Download {{ selectedBrands.length }} Separate PDFs
-        </span>
-        <span v-else>
-          Generating {{ selectedBrands.length }} PDFs • {{ currentBrand }}...
-        </span>
-      </button>
+      <div class="text-center">
+        <button @click="generatePdf" :disabled="isGenerating || selectedBrands.length === 0"
+                class="inline-block px-16 py-8 text-3xl font-bold text-white rounded-3xl shadow-2xl transition-all duration-300
+                       disabled:opacity-60 disabled:cursor-not-allowed
+                       bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800">
+          <span v-if="!isGenerating">
+            Download {{ selectedBrands.length }} Separate PDFs Now
+          </span>
+          <span v-else>
+            Generating • {{ currentBrand }} ({{ completedCount }}/{{ selectedBrands.length }})
+          </span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -118,15 +137,35 @@ export default {
       countdown: 90,
       isGenerating: false,
       currentBrand: "",
+      completedCount: 0,
       pollInterval: null,
+
+      // Hardcoded brand lists
+      topBrandsList: [
+        "CUBIX",
+        "EEKEN",
+        "Florex (Swastik)",
+        "Max",
+        "RELIANCE FOOTWEAR",
+        "Solea & Meriva , Mascara",
+        "VERTEX, SLICKERS & FENDER"
+      ],
+      paragonBrandsList: [
+        "EEKEN",
+        "Max",
+        "Solea & Meriva , Mascara",
+        "VERTEX, SLICKERS & FENDER"
+      ],
     };
   },
 
   computed: {
+    hasTopBrands() { return this.topBrandsList.some(b => this.brands.includes(b)); },
+    hasParagonBrands() { return this.paragonBrandsList.some(b => this.brands.includes(b)); },
     statusMessage() {
-      if (this.serverStatus === "waking") return { title: "Waking up server...", subtitle: "First request takes 30–90s. We’re speeding it up!" };
-      if (this.serverStatus === "checking") return { title: "Almost ready!", subtitle: "Server is starting... just a moment" };
-      return { title: "Taking longer...", subtitle: "Please wait or refresh in 30s" };
+      if (this.serverStatus === "waking") return { title: "Starting server..." };
+      if (this.serverStatus === "checking") return { title: "Almost ready!" };
+      return { title: "Please wait..." };
     },
   },
 
@@ -145,7 +184,7 @@ export default {
       }
     },
 
-    async warmUpServer() {
+    warmUpServer() {
       this.serverStatus = "waking";
       this.startCountdown();
       axios.get("https://gen-pdf-0hb9.onrender.com/", { timeout: 5000 }).catch(() => {});
@@ -155,7 +194,7 @@ export default {
           await axios.head("https://gen-pdf-0hb9.onrender.com/", { timeout: 10000 });
           this.serverStatus = "ready";
           clearInterval(this.pollInterval);
-        } catch (err) {
+        } catch {
           if (this.countdown <= 0) this.serverStatus = "failed";
           else this.serverStatus = "checking";
         }
@@ -165,54 +204,50 @@ export default {
     },
 
     startCountdown() {
-      const timer = setInterval(() => {
+      const t = setInterval(() => {
         if (this.countdown > 0) this.countdown--;
-        else clearInterval(timer);
+        else clearInterval(t);
       }, 1000);
+    },
+
+    selectAll() { this.selectedBrands = [...this.brands]; },
+    selectTopBrands() { 
+      this.selectedBrands = [...new Set([...this.selectedBrands, ...this.topBrandsList.filter(b => this.brands.includes(b))])]; 
+    },
+    selectParagonBrands() { 
+      this.selectedBrands = [...new Set([...this.selectedBrands, ...this.paragonBrandsList.filter(b => this.brands.includes(b))])]; 
     },
 
     async generatePdf() {
       if (this.selectedBrands.length === 0) return alert("Select at least one brand!");
 
       this.isGenerating = true;
+      this.completedCount = 0;
 
-      // Generate ONE PDF per brand → in parallel for speed
       const promises = this.selectedBrands.map(async (brand) => {
         this.currentBrand = brand;
-        const payload = {
-          brands: [brand],  // Only this brand
-          onlyWithPhotos: this.onlyWithPhotos,
-          minQty: this.minQtyEnabled ? this.minQty : -1,
-        };
+        const payload = { brands: [brand], onlyWithPhotos: this.onlyWithPhotos, minQty: this.minQtyEnabled ? this.minQty : -1 };
 
-        const response = await axios.post(
-          "https://gen-pdf-0hb9.onrender.com/generate-pdf",
-          payload,
-          { responseType: "blob", timeout: 180000 }
-        );
-
+        const res = await axios.post("https://gen-pdf-0hb9.onrender.com/generate-pdf", payload, { responseType: "blob", timeout: 180000 });
+        
         const today = new Date().toISOString().split("T")[0];
-        const safeName = brand.replace(/[^a-zA-Z0-9]/g, "_");
-        const filename = `${safeName}_${today}.pdf`;
+        const safe = brand.replace(/[^a-zA-Z0-9]/g, "_");
+        const filename = `${safe}_${today}.pdf`;
 
-        const url = window.URL.createObjectURL(response.data);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const url = window.URL.createObjectURL(res.data);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename; a.click();
         URL.revokeObjectURL(url);
 
-        // Small delay so downloads don't clash
-        await new Promise(r => setTimeout(r, 500));
+        this.completedCount++;
+        await new Promise(r => setTimeout(r, 600));
       });
 
       try {
         await Promise.all(promises);
-        alert(`Successfully downloaded ${this.selectedBrands.length} PDFs!`);
-      } catch (err) {
-        alert("Some PDFs failed. Try again in 30 seconds.");
+        alert(`All ${this.selectedBrands.length} PDFs downloaded successfully!`);
+      } catch {
+        alert("Some failed. Try again in 30s.");
       } finally {
         this.isGenerating = false;
         this.currentBrand = "";
@@ -227,5 +262,5 @@ export default {
 </script>
 
 <style scoped>
-label:hover { transform: translateY(-2px); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
 </style>
