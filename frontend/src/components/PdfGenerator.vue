@@ -1,6 +1,6 @@
 <template>
   <div class="container mx-auto p-6 max-w-5xl min-h-screen">
-    <!-- Smart Server Wake-Up Overlay (same as before) -->
+    <!-- Smart Wake-Up Overlay -->
     <div v-if="serverStatus !== 'ready'" class="fixed inset-0 bg-gradient-to-br from-purple-900 to-indigo-900 bg-opacity-95 flex items-center justify-center z-50 backdrop-blur-lg">
       <div class="bg-white rounded-3xl shadow-2xl p-10 max-w-md text-center">
         <div class="relative mx-auto w-24 h-24 mb-8">
@@ -23,34 +23,28 @@
           Sri Brundabana Enterprises
         </h1>
         <p class="text-2xl text-gray-600 mt-2">PDF Catalog Generator</p>
+        <p class="text-lg text-green-600 font-semibold mt-4">One PDF per brand • No merging</p>
       </div>
 
-      <!-- Beautiful Brand Checkboxes Grid -->
+      <!-- Brand Checkboxes Grid -->
       <div class="bg-white rounded-3xl shadow-2xl p-10">
         <div class="flex items-center justify-between mb-8">
           <h2 class="text-2xl font-bold text-gray-800">Select Brands</h2>
           <div class="text-lg text-gray-600">
-            <span class="font-bold text-indigo-600">{{ selectedBrands.length }}</span> selected
+            <span class="font-bold text-indigo-600">{{ selectedBrands.length }}</span> selected → 
+            <span class="font-bold text-green-600">{{ selectedBrands.length }}</span> PDFs will download
           </div>
         </div>
 
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-          <label
-            v-for="brand in brands"
-            :key="brand"
-            class="relative flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg"
+          <label v-for="brand in brands" :key="brand"
+            class="relative flex items-center p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-lg"
             :class="selectedBrands.includes(brand) 
               ? 'border-indigo-600 bg-indigo-50 shadow-md' 
-              : 'border-gray-300 bg-gray-50 hover:border-gray-400'"
-          >
-            <input
-              type="checkbox"
-              :value="brand"
-              v-model="selectedBrands"
-              class="absolute opacity-0 cursor-pointer h-0 w-0"
-            />
+              : 'border-gray-300 bg-gray-50'">
+            <input type="checkbox" :value="brand" v-model="selectedBrands" class="absolute opacity-0" />
             <div class="flex items-center w-full">
-              <div class="w-8 h-8 rounded-lg border-2 flex items-center justify-center mr-4 transition-all"
+              <div class="w-8 h-8 rounded-lg border-2 flex items-center justify-center mr-4"
                    :class="selectedBrands.includes(brand) ? 'border-indigo-600 bg-indigo-600' : 'border-gray-400'">
                 <svg v-if="selectedBrands.includes(brand)" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7" />
@@ -61,7 +55,6 @@
           </label>
         </div>
 
-        <!-- Select All / Clear All Buttons -->
         <div class="mt-10 flex justify-center gap-6">
           <button @click="selectedBrands = brands.slice()" 
                   class="px-8 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition">
@@ -77,7 +70,7 @@
       <!-- Filters -->
       <div class="bg-white rounded-3xl shadow-2xl p-10 grid grid-cols-1 md:grid-cols-2 gap-10">
         <label class="flex items-center space-x-5 text-xl cursor-pointer">
-          <input type="checkbox" v-model="onlyWithPhotos" class="w-7 h-7 text-indigo-600 rounded-lg focus:ring-indigo-500" />
+          <input type="checkbox" v-model="onlyWithPhotos" class="w-7 h-7 text-indigo-600 rounded-lg" />
           <span>Only products with photos</span>
         </label>
 
@@ -88,7 +81,7 @@
           </label>
           <div class="flex items-center gap-4 mt-5">
             <input type="number" v-model.number="minQty" :disabled="!minQtyEnabled" min="0"
-              class="w-32 px-5 py-4 text-xl border-2 rounded-xl disabled:bg-gray-100 focus:border-indigo-500" />
+              class="w-32 px-5 py-4 text-xl border-2 rounded-xl disabled:bg-gray-100" />
             <span class="text-xl">or more</span>
           </div>
         </div>
@@ -96,13 +89,15 @@
 
       <!-- Generate Button -->
       <button @click="generatePdf" :disabled="isGenerating || selectedBrands.length === 0"
-        class="w-full max-w-2xl mx-auto block py-7 text-3xl font-bold text-white rounded-3xl shadow-2xl transition-all duration-300
+        class="w-full max-w-2xl mx-auto block py-7 text-3xl font-bold text-white rounded-3xl shadow-2xl transition-all
                disabled:opacity-60 disabled:cursor-not-allowed
-               bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800">
+               bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800">
         <span v-if="!isGenerating">
-          Generate PDF Catalog ({{ selectedBrands.length }} {{ selectedBrands.length === 1 ? 'brand' : 'brands' }})
+          Download {{ selectedBrands.length }} Separate PDFs
         </span>
-        <span v-else>Creating your PDF • Please wait...</span>
+        <span v-else>
+          Generating {{ selectedBrands.length }} PDFs • {{ currentBrand }}...
+        </span>
       </button>
     </div>
   </div>
@@ -122,18 +117,15 @@ export default {
       serverStatus: "waking",
       countdown: 90,
       isGenerating: false,
+      currentBrand: "",
       pollInterval: null,
     };
   },
 
   computed: {
     statusMessage() {
-      if (this.serverStatus === "waking") {
-        return { title: "Waking up server...", subtitle: "First request takes 30–90s. We’re speeding it up!" };
-      }
-      if (this.serverStatus === "checking") {
-        return { title: "Almost ready!", subtitle: "Server is starting... just a moment" };
-      }
+      if (this.serverStatus === "waking") return { title: "Waking up server...", subtitle: "First request takes 30–90s. We’re speeding it up!" };
+      if (this.serverStatus === "checking") return { title: "Almost ready!", subtitle: "Server is starting... just a moment" };
       return { title: "Taking longer...", subtitle: "Please wait or refresh in 30s" };
     },
   },
@@ -146,20 +138,16 @@ export default {
   methods: {
     async loadBrands() {
       try {
-        const res = await axios.get(
-          "https://raw.githubusercontent.com/sahilsync07/sbe/main/frontend/public/assets/stock-data.json"
-        );
+        const res = await axios.get("https://raw.githubusercontent.com/sahilsync07/sbe/main/frontend/public/assets/stock-data.json");
         this.brands = [...new Set(res.data.map(g => g.groupName))].sort();
       } catch (err) {
-        alert("Failed to load brands. Check internet.");
+        alert("Failed to load brands.");
       }
     },
 
     async warmUpServer() {
       this.serverStatus = "waking";
       this.startCountdown();
-
-      // Trigger wake-up
       axios.get("https://gen-pdf-0hb9.onrender.com/", { timeout: 5000 }).catch(() => {});
 
       const check = async () => {
@@ -172,7 +160,6 @@ export default {
           else this.serverStatus = "checking";
         }
       };
-
       check();
       this.pollInterval = setInterval(check, 5000);
     },
@@ -185,36 +172,50 @@ export default {
     },
 
     async generatePdf() {
-      if (this.selectedBrands.length === 0) return alert("Please select at least one brand!");
+      if (this.selectedBrands.length === 0) return alert("Select at least one brand!");
 
       this.isGenerating = true;
-      const payload = {
-        brands: this.selectedBrands,
-        onlyWithPhotos: this.onlyWithPhotos,
-        minQty: this.minQtyEnabled ? this.minQty : -1,
-      };
 
-      try {
+      // Generate ONE PDF per brand → in parallel for speed
+      const promises = this.selectedBrands.map(async (brand) => {
+        this.currentBrand = brand;
+        const payload = {
+          brands: [brand],  // Only this brand
+          onlyWithPhotos: this.onlyWithPhotos,
+          minQty: this.minQtyEnabled ? this.minQty : -1,
+        };
+
         const response = await axios.post(
           "https://gen-pdf-0hb9.onrender.com/generate-pdf",
           payload,
-          { responseType: "blob", timeout: 400000 }
+          { responseType: "blob", timeout: 180000 }
         );
 
         const today = new Date().toISOString().split("T")[0];
-        const name = this.selectedBrands.map(b => b.replace(/[^a-zA-Z0-9]/g, "_")).sort().join("-");
-        const filename = `${name}_${today}.pdf`;
+        const safeName = brand.replace(/[^a-zA-Z0-9]/g, "_");
+        const filename = `${safeName}_${today}.pdf`;
 
         const url = window.URL.createObjectURL(response.data);
         const link = document.createElement("a");
         link.href = url;
         link.download = filename;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
         URL.revokeObjectURL(url);
+
+        // Small delay so downloads don't clash
+        await new Promise(r => setTimeout(r, 500));
+      });
+
+      try {
+        await Promise.all(promises);
+        alert(`Successfully downloaded ${this.selectedBrands.length} PDFs!`);
       } catch (err) {
-        alert("Failed. Server might still be warming up. Try again in 30 seconds.");
+        alert("Some PDFs failed. Try again in 30 seconds.");
       } finally {
         this.isGenerating = false;
+        this.currentBrand = "";
       }
     },
   },
@@ -226,7 +227,5 @@ export default {
 </script>
 
 <style scoped>
-label:hover {
-  transform: translateY(-2px);
-}
+label:hover { transform: translateY(-2px); }
 </style>
