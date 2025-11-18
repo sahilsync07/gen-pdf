@@ -114,6 +114,17 @@
           </span>
         </button>
       </div>
+      <!-- Add this right after the PDF button -->
+<div class="text-center mt-8">
+  <button @click="downloadAsImages" :disabled="isGenerating || selectedBrands.length === 0"
+          class="px-20 py-10 text-3xl sm:text-5xl font-black text-white rounded-full shadow-2xl transition-all duration-500 transform hover:scale-110 disabled:opacity-60"
+          :class="isGenerating ? 'bg-gradient-to-r from-gray-600 to-gray-700' : 'bg-gradient-to-r from-orange-500 to-red-600'">
+    <span v-if="!isGenerating">
+      Download as Images ({{ selectedBrands.length }} brands)
+    </span>
+    <span v-else>Creating Images • {{ currentBrand }}...</span>
+  </button>
+</div>
     </div>
   </div>
 </template>
@@ -224,6 +235,64 @@ export default {
         this.currentBrand = "";
       }
     },
+    async downloadAsImages() {
+  if (!this.selectedBrands.length) return alert("Select brands first!");
+
+  this.isGenerating = true;
+
+  for (const brand of this.selectedBrands) {
+    this.currentBrand = brand;
+    const payload = {
+      brands: [brand],
+      onlyWithPhotos: this.onlyWithPhotos,
+      minQty: this.minQtyEnabled ? this.minQty : -1,
+    };
+
+    try {
+      const res = await axios.post(
+        "https://gen-pdf-0hb9.onrender.com/generate-pdf",
+        payload,
+        { responseType: "blob", timeout: 180000 }
+      );
+
+      // Convert PDF to images using pdf.js (client-side)
+      const pdfBlob = res.data;
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 2.0 }); // High quality
+
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const context = canvas.getContext("2d");
+
+        await page.render({ canvasContext: context, viewport }).promise;
+
+        // Convert canvas to blob
+        canvas.toBlob(async (blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${brand.replace(/[^a-zA-Z0-9]/g, "_")}_Page_${pageNum}.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }, "image/png", 0.95);
+      }
+
+      URL.revokeObjectURL(pdfUrl);
+      await new Promise(r => setTimeout(r, 1000)); // Avoid rate limit
+    } catch (err) {
+      console.error("Image gen failed for", brand);
+    }
+  }
+
+  this.isGenerating = false;
+  this.currentBrand = "";
+  alert("All images downloaded!");
+},
   },
 
   beforeUnmount() {
