@@ -54,6 +54,22 @@ app.post("/generate-pdf", async (req, res) => {
 
         // Light beige background (no overflow)
         doc.rect(0, 0, doc.page.width, doc.page.height).fill("#faf8f6");
+        // Subtle waves (kept - they look premium)
+        doc
+          .moveTo(0, 0)
+          .lineTo(200, 80)
+          .quadraticCurveTo(300, 0, 600, 100)
+          .strokeColor("#e0e0e0")
+          .lineWidth(3)
+          .stroke();
+
+        doc
+          .moveTo(0, doc.page.height)
+          .lineTo(250, doc.page.height - 100)
+          .quadraticCurveTo(350, doc.page.height, 600, doc.page.height - 50)
+          .strokeColor("#e0e0e0")
+          .lineWidth(3)
+          .stroke();
 
         // Brand name only on first product page - smaller & higher to avoid overflow
         if (isFirstProductInBrand) {
