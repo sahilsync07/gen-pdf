@@ -37,7 +37,7 @@
       <!-- Quick Action Buttons -->
       <div class="bg-white/90 rounded-3xl shadow-2xl p-8 mb-10 backdrop-blur">
         <h3 class="text-2xl sm:text-3xl font-bold text-center mb-8 text-gray-800">Quick Select</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           <button @click="selectAll" class="py-6 px-8 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all">
             Select All ({{ brands.length }})
           </button>
@@ -47,7 +47,10 @@
           <button @click="selectParagonBrands" :disabled="!hasParagonBrands" class="py-6 px-8 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50">
             Paragon Brands ({{ paragonBrandsList.filter(b => brands.includes(b)).length }})
           </button>
-          <button @click="selectedBrands = []" class="py-6 px-8 bg-gradient-to-r from-gray-600 to-gray-700 text-white text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all">
+          <button @click="selectGeneralBrands" :disabled="!hasGeneralBrands" class="py-6 px-8 bg-gradient-to-r from-orange-600 to-red-600 text-white text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all disabled:opacity-50">
+            General Brands ({{ generalBrandsList.filter(b => brands.includes(b)).length }})
+          </button>
+          <button @click="selectedBrands = []" class="py-6 px-8 bg-gradient-to-r from-gray-600 to-gray-700 text-white text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all col-span-1 sm:col-span-2 lg:col-span-4 mt-4">
             Clear All
           </button>
         </div>
@@ -79,14 +82,17 @@
         </div>
       </div>
 
-      <!-- Filters -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 my-12">
+      <!-- Filters + PDF Mode Selector -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 my-12">
+        <!-- Only with photos -->
         <div class="bg-white/90 rounded-3xl shadow-2xl p-10 backdrop-blur">
           <label class="flex items-center space-x-6 text-2xl font-semibold cursor-pointer">
             <input type="checkbox" v-model="onlyWithPhotos" class="w-8 h-8 text-indigo-600 rounded-lg" />
             <span>Only products with photos</span>
           </label>
         </div>
+
+        <!-- Min Quantity -->
         <div class="bg-white/90 rounded-3xl shadow-2xl p-10 backdrop-blur">
           <label class="flex items-center space-x-6 text-2xl font-semibold cursor-pointer mb-6">
             <input type="checkbox" v-model="minQtyEnabled" class="w-8 h-8 text-indigo-600 rounded-lg" />
@@ -97,17 +103,36 @@
             <span class="text-2xl font-semibold">or more</span>
           </div>
         </div>
+
+        <!-- PDF Mode: Combined vs Separate -->
+        <div class="bg-white/90 rounded-3xl shadow-2xl p-10 backdrop-blur">
+          <div class="text-2xl font-bold text-gray-800 mb-6">PDF Output Mode</div>
+          <div class="space-y-5">
+            <label class="flex items-center space-x-5 cursor-pointer">
+              <input type="radio" v-model="pdfMode" value="separate" class="w-7 h-7 text-indigo-600" />
+              <span class="text-xl font-medium">Separate PDFs (one per brand)</span>
+            </label>
+            <label class="flex items-center space-x-5 cursor-pointer">
+              <input type="radio" v-model="pdfMode" value="combined" class="w-7 h-7 text-purple-600" />
+              <span class="text-xl font-medium">Combined PDF (all in one)</span>
+            </label>
+          </div>
+        </div>
       </div>
 
-      <!-- Generate Button (NO ROTATING SPINNER - JUST TEXT) -->
-      <div class="text-center mt-16">
+      <!-- Generate Button -->
+      <div ref="generateSection" class="text-center mt-16">
         <button @click="generatePdf" :disabled="isGenerating || selectedBrands.length === 0" class="px-20 py-10 text-3xl sm:text-5xl font-black text-white rounded-full shadow-2xl transition-all duration-500 transform hover:scale-110 disabled:opacity-60" :class="isGenerating ? 'bg-gradient-to-r from-orange-600 to-red-600' : 'bg-gradient-to-r from-green-600 to-emerald-700'">
-          <span v-if="!isGenerating">Download {{ selectedBrands.length }} PDFs Now</span>
-          <span v-else>Generating • {{ currentBrand }} ({{ completedCount }}/{{ selectedBrands.length }})</span>
+          <span v-if="!isGenerating">
+            {{ pdfMode === 'combined' ? 'Download Combined PDF' : `Download ${selectedBrands.length} PDFs Now` }}
+          </span>
+          <span v-else>
+            {{ pdfMode === 'combined' ? 'Combining All Brands...' : 'Generating • ' }}{{ currentBrand }} ({{ completedCount }}/{{ selectedBrands.length }})
+          </span>
         </button>
       </div>
 
-      <!-- Images Button (Same Style) -->
+      <!-- Images Button -->
       <div class="text-center mt-8">
         <button @click="downloadAsImages" :disabled="isGenerating || selectedBrands.length === 0" class="px-20 py-10 text-3xl sm:text-5xl font-black text-white rounded-full shadow-2xl transition-all duration-500 transform hover:scale-110 disabled:opacity-60" :class="isGenerating ? 'bg-gradient-to-r from-gray-600 to-gray-700' : 'bg-gradient-to-r from-orange-500 to-red-600'">
           <span v-if="!isGenerating">Download as Images ({{ selectedBrands.length }} brands)</span>
@@ -129,6 +154,7 @@ export default {
       onlyWithPhotos: true,
       minQtyEnabled: false,
       minQty: 5,
+      pdfMode: "separate", // new: separate | combined
       serverStatus: "waking",
       countdown: 90,
       isGenerating: false,
@@ -139,13 +165,33 @@ export default {
       toastMessage: "",
 
       topBrandsList: ["CUBIX", "EEKEN", "Florex (Swastik)", "Max", "RELIANCE FOOTWEAR", "Solea & Meriva , Mascara", "VERTEX, SLICKERS & FENDER"],
-      paragonBrandsList: ["EEKEN", "Max", "Solea & Meriva , Mascara", "VERTEX, SLICKERS & FENDER"]
+      paragonBrandsList: ["EEKEN", "Max", "Solea & Meriva , Mascara", "VERTEX, SLICKERS & FENDER"],
+      generalBrandsList: [
+        "AIRFAX",
+        "Airsun",
+        "J.K Plastic",
+        "SRG ENTERPRISES",
+        "VARDHMAN PLASTICS",
+        "NAV DURGA ENTERPRISES",
+        "AAGAM POLYMER",
+        "Magnet",
+        "MARUTI PLASTICS",
+        "Fencer",
+        "PANKAJ PLASTIC",
+        "PARIS",
+        "PU-LION",
+        "SHYAM",
+        "TEUZ",
+        "UAM FOOTWEAR",
+        "Xpania",
+      ],
     };
   },
 
   computed: {
     hasTopBrands() { return this.topBrandsList.some(b => this.brands.includes(b)); },
     hasParagonBrands() { return this.paragonBrandsList.some(b => this.brands.includes(b)); },
+    hasGeneralBrands() { return this.generalBrandsList.some(b => this.brands.includes(b)); },
   },
 
   async mounted() {
@@ -154,6 +200,12 @@ export default {
   },
 
   methods: {
+    scrollToGenerate() {
+      this.$nextTick(() => {
+        this.$refs.generateSection?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    },
+
     async loadBrands() {
       try {
         const res = await axios.get("https://raw.githubusercontent.com/sahilsync07/sbe/main/frontend/public/assets/stock-data.json");
@@ -190,12 +242,21 @@ export default {
       }, 1000);
     },
 
-    selectAll() { this.selectedBrands = [...this.brands]; },
+    selectAll() { 
+      this.selectedBrands = [...this.brands]; 
+      this.scrollToGenerate();
+    },
     selectTopBrands() { 
       this.selectedBrands = [...new Set([...this.selectedBrands, ...this.topBrandsList.filter(b => this.brands.includes(b))])]; 
+      this.scrollToGenerate();
     },
     selectParagonBrands() { 
       this.selectedBrands = [...new Set([...this.selectedBrands, ...this.paragonBrandsList.filter(b => this.brands.includes(b))])]; 
+      this.scrollToGenerate();
+    },
+    selectGeneralBrands() { 
+      this.selectedBrands = [...new Set([...this.selectedBrands, ...this.generalBrandsList.filter(b => this.brands.includes(b))])]; 
+      this.scrollToGenerate();
     },
 
     async generatePdf() {
@@ -209,41 +270,81 @@ export default {
       this.isGenerating = true;
       this.completedCount = 0;
 
-      const promises = this.selectedBrands.map(async (brand) => {
-        this.currentBrand = brand;
-        const payload = { brands: [brand], onlyWithPhotos: this.onlyWithPhotos, minQty: this.minQtyEnabled ? this.minQty : -1 };
+      if (this.pdfMode === "combined") {
+        // COMBINED PDF: One request with all brands
+        this.currentBrand = "All Brands";
+        const payload = { 
+          brands: this.selectedBrands, 
+          onlyWithPhotos: this.onlyWithPhotos, 
+          minQty: this.minQtyEnabled ? this.minQty : -1 
+        };
 
-        const res = await axios.post("https://gen-pdf-0hb9.onrender.com/generate-pdf", payload, { responseType: "blob", timeout: 180000 });
-        
-        const today = new Date().toISOString().split("T")[0];
-        const safe = brand.replace(/[^a-zA-Z0-9]/g, "_");
-        const filename = `${safe}_${today}.pdf`;
+        try {
+          const res = await axios.post("https://gen-pdf-0hb9.onrender.com/generate-pdf", payload, { 
+            responseType: "blob", 
+            timeout: 300000 
+          });
 
-        const url = window.URL.createObjectURL(res.data);
-        const a = document.createElement("a");
-        a.href = url; a.download = filename; a.click();
-        window.URL.revokeObjectURL(url);
+          const today = new Date().toISOString().split("T")[0];
+          const safeName = this.selectedBrands.map(b => b.replace(/[^a-zA-Z0-9]/g, "_")).join("-");
+          const filename = `COMBINED_${safeName}_${today}.pdf`;
 
-        this.completedCount++;
-        await new Promise(r => setTimeout(r, 700));
-      });
+          const url = window.URL.createObjectURL(res.data);
+          const a = document.createElement("a");
+          a.href = url; a.download = filename; a.click();
+          window.URL.revokeObjectURL(url);
 
-      try {
-        await Promise.all(promises);
-        this.showToast = true;
-        this.toastMessage = `All ${this.selectedBrands.length} PDFs downloaded!`;
-        setTimeout(() => this.showToast = false, 3000);
-      } catch {
-        this.showToast = true;
-        this.toastMessage = "Some failed — try again in 30s";
-        setTimeout(() => this.showToast = false, 3000);
-      } finally {
-        this.isGenerating = false;
-        this.currentBrand = "";
+          this.completedCount = 1;
+          this.showToast = true;
+          this.toastMessage = "Combined PDF downloaded!";
+          setTimeout(() => this.showToast = false, 4000);
+        } catch (err) {
+          this.showToast = true;
+          this.toastMessage = "Failed to generate combined PDF";
+          setTimeout(() => this.showToast = false, 4000);
+        } finally {
+          this.isGenerating = false;
+          this.currentBrand = "";
+        }
+      } else {
+        // SEPARATE PDFs: Existing behavior
+        const promises = this.selectedBrands.map(async (brand) => {
+          this.currentBrand = brand;
+          const payload = { brands: [brand], onlyWithPhotos: this.onlyWithPhotos, minQty: this.minQtyEnabled ? this.minQty : -1 };
+
+          const res = await axios.post("https://gen-pdf-0hb9.onrender.com/generate-pdf", payload, { responseType: "blob", timeout: 180000 });
+          
+          const today = new Date().toISOString().split("T")[0];
+          const safe = brand.replace(/[^a-zA-Z0-9]/g, "_");
+          const filename = `${safe}_${today}.pdf`;
+
+          const url = window.URL.createObjectURL(res.data);
+          const a = document.createElement("a");
+          a.href = url; a.download = filename; a.click();
+          window.URL.revokeObjectURL(url);
+
+          this.completedCount++;
+          await new Promise(r => setTimeout(r, 700));
+        });
+
+        try {
+          await Promise.all(promises);
+          this.showToast = true;
+          this.toastMessage = `All ${this.selectedBrands.length} PDFs downloaded!`;
+          setTimeout(() => this.showToast = false, 3000);
+        } catch {
+          this.showToast = true;
+          this.toastMessage = "Some failed — try again in 30s";
+          setTimeout(() => this.showToast = false, 3000);
+        } finally {
+          this.isGenerating = false;
+          this.currentBrand = "";
+        }
       }
     },
 
     async downloadAsImages() {
+      // Unchanged – only separate mode supported for images
       if (!this.selectedBrands.length) {
         this.showToast = true;
         this.toastMessage = "Select at least one brand first";
