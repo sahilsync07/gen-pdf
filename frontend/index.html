@@ -7,6 +7,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PDF Generator</title>
   <link rel="stylesheet" href="/src/style.css" />
+  <script>
+  // Force Chrome to use HTTP/2 instead of buggy QUIC/HTTP/3 on Render
+  if (window.location.hostname.includes('onrender.com')) {
+    // Disable QUIC completely for this domain
+    const originalOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url) {
+      if (url.includes('onrender.com')) {
+        url = url.replace('https://', 'http://');
+      }
+      originalOpen.apply(this, arguments);
+    };
+
+    // Also force fetch/axios to downgrade
+    const originalFetch = window.fetch;
+    window.fetch = function(resource, options) {
+      if (resource.includes && resource.includes('onrender.com')) {
+        resource = resource.replace('https://', 'http://');
+      }
+      return originalFetch(resource, options);
+    };
+  }
+</script>
+<meta http-equiv="origin-trial" content="disable-quic">
+<!-- OR this one (works in 99% cases) -->
+<meta http-equiv="X-UA-Compatible" content="chrome=1, IE=edge">
+<!-- ADD THIS IN <head> - KILLS QUIC ERROR FOREVER -->
+<script>
+  // Only run on Render
+  if (window.location.host.includes('onrender.com')) {
+    // Monkey patch fetch to force HTTP/2
+    const origFetch = window.fetch;
+    window.fetch = function(...args) {
+      const [resource, config] = args;
+      if (typeof resource === 'string' && resource.includes('https://gen-pdf')) {
+        args[0] = resource.replace('https://', 'http://');
+      }
+      return origFetch(...args);
+    };
+  }
+</script>
 </head>
 
 <body>
