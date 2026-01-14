@@ -238,10 +238,7 @@
                   <p class="text-slate-500 font-medium">Configure your export settings</p>
               </header>
 
-              <div v-if="serverStatus !== 'ready'" class="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-700">
-                  <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                  <span>Waking up server... ({{ countdown }}s)</span>
-              </div>
+
 
               <div class="space-y-6 max-w-2xl">
                  <!-- Filters Card -->
@@ -391,6 +388,7 @@
 import axios from "axios";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import { jsPDF } from "jspdf";
 
 export default {
   data() {
@@ -400,15 +398,13 @@ export default {
       onlyWithPhotos: true,
       minQtyEnabled: false,
       minQty: 5,
+      minQty: 5,
       pdfMode: "separate",
-      serverStatus: "waking",
-      countdown: 90,
       isGenerating: false,
       isPdfGenerating: false,
       isZipGenerating: false,
       currentBrand: "",
       completedCount: 0,
-      pollInterval: null,
       showToast: false,
       toastMessage: "",
 
@@ -507,7 +503,7 @@ export default {
 
   async mounted() {
     this.loadBrands();
-    this.warmUpServer();
+    this.loadBrands();
   },
 
   methods: {
@@ -584,61 +580,141 @@ export default {
       }
     },
 
-    warmUpServer() {
-      this.serverStatus = "waking";
-      this.startCountdown();
-      axios.get("https://gen-pdf-0hb9.onrender.com/", { timeout: 5000 }).catch(() => {});
+    // --- PDF GENERATION LOGIC (Frontend Only) ---
+    async generatePdfBlob(targetBrands) {
+        // 1. Fetch Data
+        const jsonUrl = "https://raw.githubusercontent.com/sahilsync07/sbe/main/frontend/public/assets/stock-data.json";
+        const response = await axios.get(jsonUrl);
+        const data = response.data;
+        const filteredGroups = data.filter((group) => targetBrands.includes(group.groupName));
+        
+        // 2. Setup PDF
+        const doc = new jsPDF({
+            orientation: "portrait",
+            unit: "pt", // using points to match pdfkit somewhat closer (72 dpi vs pdfkit default)
+            format: "a4"
+        });
+        
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        
+        let hasAddedPage = false;
 
-      const check = async () => {
-        try {
-          await axios.head("https://gen-pdf-0hb9.onrender.com/", { timeout: 10000 });
-          this.serverStatus = "ready";
-          clearInterval(this.pollInterval);
-        } catch {
-          if (this.countdown <= 0) this.serverStatus = "failed";
-        }
-      };
-      check();
-      this.pollInterval = setInterval(check, 5000);
-    },
+        for (const group of filteredGroups) {
+            let isFirstProductInBrand = true;
 
-    startCountdown() {
-      const t = setInterval(() => {
-        if (this.countdown > 0) this.countdown--;
-        else clearInterval(t);
-      }, 1000);
-    },
+            for (const product of group.products) {
+                if (this.onlyWithPhotos && !product.imageUrl) continue;
+                if (this.minQtyEnabled && product.quantity <= this.minQty) continue;
 
-    selectAll() { 
-      this.selectedBrands = [...this.brands]; 
-      this.scrollToGenerate();
-    },
-    selectTopBrands() { 
-      this.selectedBrands = [...new Set([...this.selectedBrands, ...this.topBrandsList.filter(b => this.brands.includes(b))])]; 
-      this.scrollToGenerate();
-    },
-    selectParagonBrands() { 
-      this.selectedBrands = [...new Set([...this.selectedBrands, ...this.paragonBrandsList.filter(b => this.brands.includes(b))])]; 
-      this.scrollToGenerate();
-    },
-    selectGeneralBrands() { 
-      this.selectedBrands = [...new Set([...this.selectedBrands, ...this.generalBrandsList.filter(b => this.brands.includes(b))])]; 
-      this.scrollToGenerate();
-    },
+                if (hasAddedPage) {
+                    doc.addPage();
+                }
+                hasAddedPage = true;
 
-    async fetchPdfWithRetry(payload, retries = 3) {
-        for (let i = 0; i < retries; i++) {
-            try {
-                return await axios.post("https://gen-pdf-0hb9.onrender.com/generate-pdf", payload, { 
-                    responseType: "blob", 
-                    timeout: 300000 // 5 minutes 
-                });
-            } catch (error) {
-                console.warn(`Attempt ${i + 1} failed for ${payload.brands[0]}:`, error);
-                if (i === retries - 1) throw error;
-                await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1))); // Exponentialish backoff
+                // A. Background (Light beige)
+                doc.setFillColor("#faf8f6");
+                doc.rect(0, 0, pageWidth, pageHeight, "F");
+
+                // B. Waves
+                doc.setDrawColor("#e0e0e0");
+                doc.setLineWidth(3);
+
+                // Top Wave
+                doc.path([
+                    { op: 'm', c: [0, 0] },
+                    { op: 'l', c: [200, 80] },
+                    { op: 'c', c: [266, 26, 400, 33, 600, 100] }
+                ]);
+                doc.stroke();
+
+                // Bottom Wave
+                const h = pageHeight;
+                doc.path([
+                    { op: 'm', c: [0, h] },
+                    { op: 'l', c: [250, h - 100] },
+                    { op: 'c', c: [316, h - 33, 433, h - 16, 600, h - 50] }
+                ]);
+                doc.stroke();
+
+                // C. Brand Name (First product only)
+                if (isFirstProductInBrand) {
+                    doc.setTextColor(0, 0, 0); // Black
+                    // doc.setFillOpacity(0.2); // jsPDF doesn't handle fillOpacity easily for text, using light grey instead
+                    doc.setTextColor(200, 200, 200); // Light Grey to simulate opacity
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(28);
+                    doc.text(group.groupName, pageWidth / 2, 35, { align: "center" });
+                    isFirstProductInBrand = false;
+                }
+
+                // D. Product Image
+                if (product.imageUrl) {
+                    try {
+                        // Fetch image as blobs
+                        const imgData = await this.fetchImageAsBase64(product.imageUrl);
+                        
+                        // Dimensions
+                        const maxWidth = pageWidth - 40;
+                        const maxHeight = pageHeight - 150; 
+                        
+                        // We need image dimensions. 
+                        // With Base64, we can load it into a temporary Image object to get dims
+                        const dims = await this.getImageDimensions(imgData);
+                        
+                        const scale = Math.min(maxWidth / dims.width, maxHeight / dims.height, 1);
+                        const finalWidth = dims.width * scale;
+                        const finalHeight = dims.height * scale;
+                        
+                        const x = (pageWidth - finalWidth) / 2;
+                        const y = 60; 
+                        
+                        doc.addImage(imgData, "JPEG", x, y, finalWidth, finalHeight);
+
+                        const textY = y + finalHeight + 25;
+
+                        // E. Text
+                        doc.setTextColor(0, 0, 0);
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(16);
+                        doc.text(product.productName, pageWidth / 2, textY, { align: "center" });
+
+                        doc.setTextColor(212, 0, 0); // #d40000
+                        doc.setFontSize(18);
+                        doc.text(`Qty: ${product.quantity}`, pageWidth / 2, textY + 30, { align: "center" });
+
+                    } catch (imgErr) {
+                        console.error(`Image failed: ${product.productName}`, imgErr);
+                        doc.setTextColor(0);
+                        doc.setFontSize(16);
+                        doc.text("Image Load Failed", pageWidth / 2, pageHeight / 2, { align: "center" });
+                    }
+                } else {
+                    doc.setTextColor(0);
+                    doc.setFontSize(20);
+                    doc.text(product.productName, pageWidth / 2, pageHeight / 2 - 20, { align: "center" });
+                    doc.text(`Qty: ${product.quantity}`, pageWidth / 2, pageHeight / 2 + 20, { align: "center" });
+                }
             }
         }
+        
+        return doc.output("blob");
+    },
+    
+    async fetchImageAsBase64(url) {
+        const res = await axios.get(url, { responseType: "arraybuffer" });
+        const base64 = btoa(
+            new Uint8Array(res.data).reduce((data, byte) => data + String.fromCharCode(byte), "")
+        );
+        return `data:${res.headers["content-type"]};base64,${base64}`;
+    },
+
+    async getImageDimensions(base64) {
+        return new Promise((resolve) => {
+            const i = new Image();
+            i.onload = () => resolve({ width: i.width, height: i.height });
+            i.src = base64;
+        });
     },
 
     async generatePdf() {
@@ -656,19 +732,14 @@ export default {
       if (this.pdfMode === "combined") {
         // COMBINED PDF
         this.currentBrand = "Merging All Brands...";
-        const payload = { 
-          brands: this.selectedBrands, 
-          onlyWithPhotos: this.onlyWithPhotos, 
-          minQty: this.minQtyEnabled ? this.minQty : -1 
-        };
-
+        
         try {
-          const res = await this.fetchPdfWithRetry(payload);
+          const blob = await this.generatePdfBlob(this.selectedBrands);
 
           const today = new Date().toISOString().split("T")[0];
           const filename = `CATALOG_COMBINED_${today}.pdf`;
 
-          const url = window.URL.createObjectURL(res.data);
+          const url = window.URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url; a.download = filename; a.click();
           window.URL.revokeObjectURL(url);
@@ -680,7 +751,7 @@ export default {
         } catch (err) {
           console.error(err);
           this.showToast = true;
-          this.toastMessage = "Failed to generate combined PDF (Timeout)";
+          this.toastMessage = "Failed to generate combined PDF";
           setTimeout(() => this.showToast = false, 5000);
         } finally {
           this.isGenerating = false;
@@ -694,16 +765,15 @@ export default {
 
         for (const brand of this.selectedBrands) {
           this.currentBrand = `Generating ${brand}...`;
-          const payload = { brands: [brand], onlyWithPhotos: this.onlyWithPhotos, minQty: this.minQtyEnabled ? this.minQty : -1 };
-
+          
           try {
-             const res = await this.fetchPdfWithRetry(payload);
+             const blob = await this.generatePdfBlob([brand]);
              
              const today = new Date().toISOString().split("T")[0];
              const safe = brand.replace(/[^a-zA-Z0-9]/g, "_");
              const filename = `${safe}_${today}.pdf`;
 
-             const url = window.URL.createObjectURL(res.data);
+             const url = window.URL.createObjectURL(blob);
              const a = document.createElement("a");
              a.href = url; a.download = filename; a.click();
              window.URL.revokeObjectURL(url);
@@ -714,7 +784,7 @@ export default {
              failCount++;
           }
           this.completedCount++;
-          await new Promise(r => setTimeout(r, 500));
+          await new Promise(r => setTimeout(r, 500)); // Sleep briefly to not freeze UI
         }
 
         this.showToast = true;
@@ -743,12 +813,8 @@ export default {
 
       for (const brand of this.selectedBrands) {
         this.currentBrand = `Processing: ${brand}`;
-        const payload = { brands: [brand], onlyWithPhotos: this.onlyWithPhotos, minQty: this.minQtyEnabled ? this.minQty : -1 };
-
         try {
-          const res = await this.fetchPdfWithRetry(payload);
-          
-          const pdfBlob = res.data;
+          const pdfBlob = await this.generatePdfBlob([brand]);
           const pdfUrl = URL.createObjectURL(pdfBlob);
 
           const loadingTask = pdfjsLib.getDocument(pdfUrl);
@@ -808,12 +874,11 @@ export default {
 
       for (const brand of this.selectedBrands) {
           this.currentBrand = `Zipping: ${brand}`;
-          const payload = { brands: [brand], onlyWithPhotos: this.onlyWithPhotos, minQty: this.minQtyEnabled ? this.minQty : -1 };
 
-          try {
-              const res = await this.fetchPdfWithRetry(payload);
+           try {
+              const blob = await this.generatePdfBlob([brand]);
               
-              const pdfUrl = URL.createObjectURL(res.data);
+              const pdfUrl = URL.createObjectURL(blob);
               const loadingTask = pdfjsLib.getDocument(pdfUrl);
               const pdf = await loadingTask.promise;
               
@@ -858,9 +923,7 @@ export default {
     },
   },
 
-  beforeUnmount() {
-    clearInterval(this.pollInterval);
-  },
+
 };
 </script>
 

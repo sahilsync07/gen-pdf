@@ -11,6 +11,7 @@
   "dependencies": {
     "axios": "^1.12.2",
     "file-saver": "^2.0.5",
+    "jspdf": "^4.0.0",
     "jszip": "^3.10.1",
     "pdfjs-dist": "^5.4.394",
     "vue": "^3.5.18"
