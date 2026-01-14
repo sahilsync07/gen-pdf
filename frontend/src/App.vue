@@ -1,8 +1,5 @@
 <template>
-  <div
-    id="app"
-    class="min-h-screen bg-gray-100 flex items-center justify-center"
-  >
+  <div id="app">
     <PdfGenerator />
   </div>
 </template>
