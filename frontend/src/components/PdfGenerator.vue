@@ -1,7 +1,10 @@
 <template>
-  <div class="flex h-screen w-full bg-slate-50 font-sans text-slate-800 overflow-hidden">
+  <div class="flex flex-col lg:flex-row h-screen w-full bg-slate-50 font-sans text-slate-800 overflow-hidden">
     <!-- Sidebar -->
-    <aside class="w-[480px] border-r border-slate-200 bg-white flex-shrink-0 flex flex-col h-full z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+    <aside 
+      class="border-r border-slate-200 bg-white flex-shrink-0 flex-col h-full z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 w-full lg:w-[480px]"
+      :class="[mobileTab === 'brands' ? 'flex' : 'hidden lg:flex']"
+    >
       <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-10">
          <div class="flex items-center gap-2">
             <h2 class="text-xl font-black text-slate-800 tracking-tight">Brands</h2>
@@ -10,7 +13,7 @@
          <button @click="selectedBrands = []" class="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors" v-if="selectedBrands.length > 0">Clear</button>
       </div>
       
-      <div class="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar pb-24">
+      <div class="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar pb-24 lg:pb-4">
          
          <!-- Paragon Section -->
          <div v-if="groupedSidebar.paragon.length > 0" class="p-2 transition-all rounded-2xl bg-red-50/30 hover:bg-red-50/60 border border-transparent hover:border-red-100">
@@ -229,10 +232,13 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-50/50">
-       <div class="flex h-full"> 
+    <main 
+      class="flex-1 flex-col h-full relative overflow-hidden bg-slate-50/50"
+      :class="[mobileTab === 'export' ? 'flex' : 'hidden lg:flex']"
+    >
+       <div class="flex h-full flex-col lg:flex-row w-full"> 
           <!-- Settings & Actions Area -->
-          <div class="flex-1 overflow-y-auto p-10">
+          <div class="flex-1 overflow-y-auto p-4 lg:p-10 pb-24 lg:pb-10 w-full">
               <header class="mb-8">
                   <h1 class="text-3xl font-black text-slate-800 tracking-tight">Generate Catalog</h1>
                   <p class="text-slate-500 font-medium">Configure your export settings</p>
@@ -373,6 +379,33 @@
           </div>
        </div>
     </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <div class="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-around items-center h-16 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe">
+        <button 
+           @click="mobileTab = 'brands'"
+           class="flex flex-col items-center justify-center w-full h-full space-y-1 active:bg-slate-50 transition-colors"
+           :class="mobileTab === 'brands' ? 'text-blue-600' : 'text-slate-400'"
+        >
+           <i class="fa-solid fa-list-check text-xl"></i>
+           <span class="text-[10px] font-bold uppercase tracking-wide">Brands</span>
+        </button>
+        
+        <div class="h-8 w-[1px] bg-slate-100"></div>
+
+        <button 
+           @click="mobileTab = 'export'"
+           class="flex flex-col items-center justify-center w-full h-full space-y-1 active:bg-slate-50 transition-colors"
+           :class="mobileTab === 'export' ? 'text-blue-600' : 'text-slate-400'"
+        >
+           <div class="relative">
+             <i class="fa-solid fa-file-export text-xl"></i>
+             <span v-if="selectedBrands.length > 0" class="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">{{ selectedBrands.length }}</span>
+           </div>
+           <span class="text-[10px] font-bold uppercase tracking-wide">Export</span>
+        </button>
+    </div>
+    
     
     <!-- Toast -->
     <div v-if="showToast" class="fixed bottom-6 right-6 z-[60] animate-bounce-in">
@@ -403,6 +436,7 @@ export default {
       isGenerating: false,
       isPdfGenerating: false,
       isZipGenerating: false,
+      mobileTab: 'brands', // 'brands' | 'export'
       currentBrand: "",
       completedCount: 0,
       showToast: false,
