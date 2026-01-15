@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SBE Catalog</string>
+    <string name="title_activity_main">SBE Catalog</string>
+    <string name="package_name">com.sbe.catalog</string>
+    <string name="custom_url_scheme">com.sbe.catalog</string>
+</resources>

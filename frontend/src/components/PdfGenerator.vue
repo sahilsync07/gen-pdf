@@ -336,6 +336,23 @@
                        </button>
                     </div>
 
+                    <!-- Native App Share Button (WhatsApp/etc) -->
+                    <button 
+                      v-if="isNativeApp"
+                      @click="shareViaNativeApp" 
+                      :disabled="selectedBrands.length === 0 || isGenerating"
+                      class="w-full mt-3 py-4 bg-[#25D366] hover:bg-[#128C7E] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-lg"
+                    >
+                       <span v-if="isGenerating && isSharing" class="flex items-center gap-2">
+                          <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                          Preparing Share ({{ completedCount }}/{{selectedBrands.length}})
+                       </span>
+                       <span v-else class="flex items-center gap-2">
+                         <i class="fa-brands fa-whatsapp text-2xl"></i>
+                         Share on WhatsApp
+                       </span>
+                    </button>
+
                     <!-- Progress Bar -->
                     <div v-if="isGenerating" class="mt-4 p-4 bg-blue-50/50 border border-blue-100 rounded-xl space-y-2">
                         <div class="flex justify-between text-xs font-bold text-blue-800 uppercase tracking-widest">
@@ -399,8 +416,9 @@
            :class="mobileTab === 'export' ? 'text-blue-600' : 'text-slate-400'"
         >
            <div class="relative">
-             <i class="fa-solid fa-file-export text-xl"></i>
-             <span v-if="selectedBrands.length > 0" class="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">{{ selectedBrands.length }}</span>
+             <i class="fa-solid fa-file-export text-xl relative">
+               <span v-if="selectedBrands.length > 0" class="absolute -top-1.5 -right-2.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm ring-2 ring-white">{{ selectedBrands.length }}</span>
+             </i>
            </div>
            <span class="text-[10px] font-bold uppercase tracking-wide">Export</span>
         </button>
@@ -414,6 +432,37 @@
           <span class="font-medium">{{ toastMessage }}</span>
        </div>
     </div>
+
+    <!-- Batch Share Modal -->
+    <div v-if="showBatchModal" class="fixed inset-0 z-[70] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-6">
+            <div class="text-center space-y-2">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-brands fa-whatsapp text-3xl text-green-600"></i>
+                </div>
+                <h3 class="text-xl font-black text-slate-800">Share Batch {{ currentBatchIndex + 1 }} / {{ batchList.length }}</h3>
+                <p class="text-slate-500 font-medium">Sending {{ batchList[currentBatchIndex].length }} images in this batch.</p>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-green-500 rounded-full transition-all duration-300" :style="{ width: `${((currentBatchIndex) / batchList.length) * 100}%` }"></div>
+            </div>
+
+            <button 
+                @click="executeBatchShare" 
+                class="w-full py-4 bg-[#25D366] hover:bg-[#128C7E] text-white font-bold rounded-xl shadow-xl active:scale-[0.95] transition-all flex items-center justify-center gap-3 text-lg"
+            >
+                <span>Share Batch {{ currentBatchIndex + 1 }}</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+            
+            <button @click="showBatchModal = false; isSharing = false;" class="w-full py-3 text-slate-400 font-bold hover:text-slate-600">
+                Cancel
+            </button>
+        </div>
+    </div>
+
   </div>
 </template>
 
@@ -421,7 +470,11 @@
 import axios from "axios";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+
 import { jsPDF } from "jspdf";
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
 
 export default {
   data() {
@@ -435,7 +488,15 @@ export default {
       pdfMode: "separate",
       isGenerating: false,
       isPdfGenerating: false,
+      isPdfGenerating: false,
       isZipGenerating: false,
+      isSharing: false,
+      
+      // Batch Sharing State
+      showBatchModal: false,
+      batchList: [], // Array of Array of Strings (URIs)
+      currentBatchIndex: 0,
+
       mobileTab: 'brands', // 'brands' | 'export'
       currentBrand: "",
       completedCount: 0,
@@ -533,6 +594,9 @@ export default {
 
        return { paragon, topBrands, midBrands, socksGroups, general, bansalGroups, airsonGroups, kohinoorGroups, nareshGroups, others };
     },
+    isNativeApp() {
+        return Capacitor.isNativePlatform();
+    }
   },
 
   async mounted() {
@@ -954,6 +1018,124 @@ export default {
       this.showToast = true;
       this.toastMessage = `ZIP Ready! ${totalPages} images included.`;
       setTimeout(() => this.showToast = false, 4000);
+    },
+
+    async shareViaNativeApp() {
+        if (!this.selectedBrands.length) return;
+
+        this.isGenerating = true;
+        this.isSharing = true;
+        this.completedCount = 0;
+        
+        try {
+            const pdfjsLib = await import("pdfjs-dist");
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+            
+            const fileUris = [];
+
+            // 1. Generate All Images & Save to Temp
+            for (const brand of this.selectedBrands) {
+                this.currentBrand = `Preparing: ${brand}`;
+                try {
+                    const blob = await this.generatePdfBlob([brand]);
+                    const pdfUrl = URL.createObjectURL(blob);
+                    const loadingTask = pdfjsLib.getDocument(pdfUrl);
+                    const pdf = await loadingTask.promise;
+                    
+                    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                            const page = await pdf.getPage(pageNum);
+                            // Scale 1.5 is good balance for WhatsApp (lighter than print)
+                            const viewport = page.getViewport({ scale: 1.5 });
+
+                            const canvas = document.createElement("canvas");
+                            canvas.width = viewport.width;
+                            canvas.height = viewport.height;
+                            const context = canvas.getContext("2d");
+                            await page.render({ canvasContext: context, viewport }).promise;
+
+                            // Convert to Base64 (needed for Filesystem.writeFile)
+                            const base64 = canvas.toDataURL("image/jpeg", 0.8).split(',')[1];
+                            const fileName = `${brand.replace(/[^a-zA-Z0-9]/g, "")}_${pageNum}.jpg`;
+                            
+                            // Save to Cache Directory
+                            const savedFile = await Filesystem.writeFile({
+                                path: fileName,
+                                data: base64,
+                                directory: Directory.Cache
+                            });
+                            
+                            fileUris.push(savedFile.uri);
+                    }
+                    URL.revokeObjectURL(pdfUrl);
+                } catch (e) {
+                    console.error("Native Gen Error", e);
+                }
+                this.completedCount++;
+            }
+
+
+            // 2. Chunking Logic (Max 30 per batch for safety on older phones/WhatsApp versions)
+            // Even though limit is 100, 30 is safer for "Share to WhatsApp" stability
+            const chunkSize = 30; 
+            const batches = [];
+            for (let i = 0; i < fileUris.length; i += chunkSize) {
+                batches.push(fileUris.slice(i, i + chunkSize));
+            }
+
+            if (batches.length === 0) {
+                 this.showToast = true;
+                 this.toastMessage = "No images generated";
+                 setTimeout(() => this.showToast = false, 3000);
+                 this.isSharing = false;
+                 this.isGenerating = false;
+                 return;
+            }
+
+            // 3. Decide: Direct Share or Batch Mode
+            if (batches.length === 1) {
+                 await Share.share({ files: batches[0] });
+                 this.isSharing = false;
+                 this.isGenerating = false; 
+            } else {
+                 this.batchList = batches;
+                 this.currentBatchIndex = 0;
+                 this.showBatchModal = true;
+                 // Don't turn off isGenerating yet, modal handles it
+            }
+
+        } catch (err) {
+            console.error("Native Share Failed", err);
+            this.showToast = true;
+            this.toastMessage = "Sharing cancelled or failed.";
+            setTimeout(() => this.showToast = false, 3000);
+            this.isGenerating = false;
+            this.isSharing = false;
+        } finally {
+            this.currentBrand = "";
+        }
+    },
+
+    async executeBatchShare() {
+        try {
+            const currentFiles = this.batchList[this.currentBatchIndex];
+            await Share.share({ files: currentFiles });
+            
+            // Move to next batch
+            this.currentBatchIndex++;
+            
+            // Check if done
+            if (this.currentBatchIndex >= this.batchList.length) {
+                this.showBatchModal = false;
+                this.isGenerating = false;
+                this.isSharing = false;
+                this.showToast = true;
+                this.toastMessage = "All batches shared successfully!";
+                setTimeout(() => this.showToast = false, 4000);
+            }
+        } catch(e) {
+            console.error(e);
+            // Don't advance index if failed, let them retry
+        }
     },
   },
 
