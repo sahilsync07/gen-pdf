@@ -1074,9 +1074,8 @@ export default {
             }
 
 
-            // 2. Chunking Logic (Max 30 per batch for safety on older phones/WhatsApp versions)
-            // Even though limit is 100, 30 is safer for "Share to WhatsApp" stability
-            const chunkSize = 30; 
+            // 2. Chunking Logic (Max 99 per batch to stay under WhatsApp 100 limit)
+            const chunkSize = 99; 
             const batches = [];
             for (let i = 0; i < fileUris.length; i += chunkSize) {
                 batches.push(fileUris.slice(i, i + chunkSize));
